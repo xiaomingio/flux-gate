@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-A lightweight self-hosted gateway for publishing internal services through Cloudflare Tunnel, with a simple web admin panel and subdomain-based routing.
+A lightweight self-hosted HTTP gateway for publishing internal web services through Cloudflare Tunnel, with a simple web admin panel and subdomain-based routing.
 
 ![](assets/admin.png)
 
@@ -20,6 +20,8 @@ Flux Gate lets you:
 Example:
 - `https://your-domain.com` → admin panel
 - `https://demo.your-domain.com` → your internal service
+
+Flux Gate is an HTTP/HTTPS reverse proxy for web services. It does not proxy arbitrary TCP ports or non-HTTP protocols such as SSH, MySQL, Redis, or raw socket services. Route-level Basic Auth works at the HTTP layer, so TCP port forwarding should be handled by a dedicated tunnel or TCP proxy instead.
 
 ## Quick start
 
