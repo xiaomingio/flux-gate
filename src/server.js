@@ -1,3 +1,7 @@
+/*
+ * 文件说明: 提供 flux-gate 的子域名反向代理与管理界面入口，代理请求不经过 body parser 直接转发给后端。
+ * 参考资料: config.sample.json
+ */
 const express = require('express');
 const httpProxy = require('http-proxy');
 const fs = require('fs');
@@ -167,8 +171,6 @@ function createApp(options = {}) {
   const { loadConfig, saveConfig } = createConfigStore(configFile);
 
   const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
   app.set('view engine', 'ejs');
   app.set('views', __dirname);
 
@@ -218,8 +220,16 @@ function createApp(options = {}) {
       return;
     }
 
+    next();
+  });
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  app.use((req, res, next) => {
+    const currentConfig = loadConfig();
     if (!verifyBasicAuth(req, loadConfig)) {
-      sendBasicChallenge(res, baseDomain, lang);
+      sendBasicChallenge(res, currentConfig.baseDomain || 'localhost', res.locals.lang);
       return;
     }
 
