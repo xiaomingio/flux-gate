@@ -257,6 +257,7 @@ function toggleRouteTypeFields() {
   document.getElementById('f-type-http').checked = !tcp;
   document.getElementById('f-type-tcp').checked = tcp;
   document.getElementById('f-sub-scheme').textContent = tcp ? 'tcp://' : 'https://';
+  document.getElementById('f-sub').placeholder = tcp ? 'ssh' : 'nas';
   document.getElementById('f-target-scheme').textContent = tcp ? 'tcp://' : 'http://';
   document.getElementById('tcp-fields').classList.toggle('hidden', !tcp);
   document.getElementById('f-listen-port').disabled = !tcp;
