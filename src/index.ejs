@@ -477,7 +477,7 @@ function renderRoutePath(route) {
     if (current === 'unmanaged' && route.current_service) nodes.push(renderWebAddress(route.current_service));
   }
   const arrow = '<span aria-hidden="true" class="text-slate-400"><span class="lg:hidden">↓</span><span class="hidden lg:inline">→</span></span>';
-  const chain = nodes.map(node => `<span class="min-w-0 break-all">${node}</span>`).join(arrow);
+  const chain = nodes.map((node, index) => `<span class="inline-flex min-w-0 max-w-full items-start gap-x-1.5">${index ? arrow : ''}<span class="min-w-0 break-all">${node}</span></span>`).join('');
   const pending = route.publication_status === 'pending' || route.publication_status === 'error';
   const desired = route.desired_path === 'blocked' ? ui.blockPublicAccess : `${pathLabel(route.desired_path)} → ${route.target_service}`;
   return `<div class="min-w-0"><div aria-label="${escapeHtml(ui.currentPath)}" class="flex min-w-0 flex-col items-start gap-x-1.5 gap-y-1 lg:flex-row lg:flex-wrap lg:items-center text-sm leading-5 text-slate-700">${chain}</div>${pending ? `<div class="mt-2 border-t border-slate-200 pt-2 text-sm"><p class="break-all text-amber-700">${ui.desiredPath}: ${escapeHtml(desired)}</p>${current === 'direct' && route.desired_path === 'gateway' ? `<p class="mt-1 text-red-700">${ui.notProtectedYet}</p>` : ''}</div>` : ''}</div>`;
