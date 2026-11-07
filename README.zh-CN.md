@@ -21,7 +21,7 @@ Flux Gate 可以帮你：
 - `https://your-domain.com` → 管理后台
 - `https://demo.your-domain.com` → 你的内网服务
 
-Flux Gate 是面向 Web 服务的 HTTP/HTTPS 反向代理，不代理任意 TCP 端口，也不适合 SSH、MySQL、Redis 或原始 socket 服务。单个路由的 Basic Auth 工作在 HTTP 层；如果需要端口级 TCP 转发，请使用专门的 tunnel 或 TCP proxy。
+Flux Gate 应用处理 HTTP/HTTPS 和 WebSocket 路由。同一 Cloudflare Tunnel 可以通过 `ssh://` / `tcp://` ingress 和官方客户端 `cloudflared` 直接转发 SSH、TCP 服务。这些连接绕过 Flux Gate 应用及其 HTTP Basic Auth；配置、公钥登录和恢复流程见 [SSH / TCP 接入](docs/tcp-forwarding.md)。
 
 ## 快速开始
 

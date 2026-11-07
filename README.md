@@ -21,7 +21,7 @@ Example:
 - `https://your-domain.com` → admin panel
 - `https://demo.your-domain.com` → your internal service
 
-Flux Gate is an HTTP/HTTPS reverse proxy for web services. It does not proxy arbitrary TCP ports or non-HTTP protocols such as SSH, MySQL, Redis, or raw socket services. Route-level Basic Auth works at the HTTP layer, so TCP port forwarding should be handled by a dedicated tunnel or TCP proxy instead.
+Flux Gate handles HTTP/HTTPS and WebSocket web routes. The same Cloudflare Tunnel can publish SSH or TCP services directly with `ssh://` / `tcp://` ingress rules and the official client-side `cloudflared` tool. These connections bypass the Flux Gate application and its HTTP Basic Auth. See [SSH / TCP setup](docs/tcp-forwarding.md) for SSH keys, ProxyCommand, deployment and recovery.
 
 ## Quick start
 
