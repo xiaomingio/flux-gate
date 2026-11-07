@@ -126,6 +126,6 @@
   "syncSuperseded": "The operation finished, but the current configuration has changed. Check the latest public path.",
   "retryOperation": "Retry",
   "verifyOperation": "Verify status",
-  "forwardingTunnel": "Service forwarding",
-  "managementTunnel": "Management access (read-only)"
+  "forwardingTunnel": "Business forwarding tunnel (managed by Gate)",
+  "managementTunnel": "Management access tunnel (read-only)"
 }

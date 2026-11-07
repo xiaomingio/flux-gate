@@ -191,7 +191,7 @@ function renderTunnelStatus() {
   const existingOpen = document.getElementById('existing-tunnel-rules')?.open || false;
   const status = mutationPending && !unconfirmedOperation ? ui.routeSyncing : !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
   panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="font-semibold text-slate-900">${ui.tunnelTitle}</h3><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : 'text-slate-600'}">${status}</span></div>
-    ${state?.changes?.length ? `<ul class="mt-3 grid gap-3 text-xs text-slate-700">${state.changes.filter(change => change.status !== 'applied' && change.status !== 'disabled').map(change => `<li class="grid gap-1 border-t border-slate-200 pt-2"><span class="break-all font-medium">${escapeHtml(change.hostname)}</span><span class="break-all">${ui.currentPath}: ${escapeHtml(state.current_verified ? change.current_service || pathLabel(change.current_path) : ui.currentUnknown)}</span><span class="break-all text-amber-800">${ui.desiredPath}: ${escapeHtml(change.desired_service || pathLabel(change.desired_path))}</span></li>`).join('')}</ul>` : ''}
+    ${state?.changes?.length ? `<ul class="mt-3 grid gap-3 text-xs text-slate-700">${state.changes.filter(change => change.status !== 'applied' && change.status !== 'disabled').map(change => `<li class="grid gap-1 border-t border-slate-200 pt-2"><span class="break-all font-medium">${escapeHtml(formatPublicAddress(change.hostname, change.desired_service, true))}</span><span class="break-all">${ui.currentPath}: ${escapeHtml(state.current_verified ? change.current_service || pathLabel(change.current_path) : ui.currentUnknown)}</span><span class="break-all text-amber-800">${ui.desiredPath}: ${escapeHtml(change.desired_service || pathLabel(change.desired_path))}</span></li>`).join('')}</ul>` : ''}
     ${state ? renderExistingRules(state, existingOpen) : ''}
     ${state?.error ? `<p class="mt-3 break-words text-sm text-red-700">${escapeHtml(state.error)}</p>` : ''}
     ${state?.status === 'disabled' ? `<p class="mt-3 text-sm leading-6 text-slate-600">${ui.tunnelManualHint}</p>` : ''}
@@ -208,8 +208,8 @@ function renderExistingRules(state, open) {
     const entries = Array.isArray(inventory.existing_rules) ? inventory.existing_rules : [];
     const content = inventory.existing_rules_error
       ? `<p class="mt-2 break-words text-sm text-red-700">${escapeHtml(inventory.existing_rules_error)}</p>`
-      : `<p class="mt-2 text-xs leading-5 text-slate-500">${inventory.current_verified ? ui.configurationVerified : ui.configurationUnverified}</p>${entries.length ? `<ul class="existing-tunnel-rule-list mt-3 grid gap-2">${entries.map(rule => `<li data-managed="${Boolean(rule.managed && !inventory.read_only)}" class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><div class="flex flex-wrap items-start justify-between gap-2"><span class="min-w-0 break-all font-mono text-xs font-medium text-slate-800">${escapeHtml(rule.hostname || ui.catchAllRule)}</span><span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${rule.managed && !inventory.read_only ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}">${rule.managed && !inventory.read_only ? ui.gateManaged : ui.externallyMaintained}</span></div>${rule.path ? `<p class="mt-1 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}<p class="mt-1 break-all font-mono text-xs leading-5 text-slate-700">→ ${escapeHtml(rule.service)}</p></li>`).join('')}</ul>` : `<p class="mt-2 text-sm text-slate-500">${ui.noExistingRules}</p>`}`;
-    return `<section data-inventory-kind="${inventory.kind === 'management' ? 'management' : 'forwarding'}" class="min-w-0 border-t border-slate-200 pt-3"><h4 class="flex flex-wrap items-baseline gap-2 text-sm font-semibold text-slate-800">${title}${inventory.label ? `<span class="break-all text-xs font-normal text-slate-500">${escapeHtml(inventory.label)}</span>` : ''}</h4>${content}</section>`;
+      : `<p class="mt-2 text-xs leading-5 text-slate-500">${inventory.current_verified ? ui.configurationVerified : ui.configurationUnverified}</p>${entries.length ? `<ul class="existing-tunnel-rule-list mt-3 grid gap-2">${entries.map(rule => `<li data-managed="${Boolean(rule.managed && !inventory.read_only)}" class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><div class="flex flex-wrap items-start justify-between gap-2"><span class="min-w-0 break-all font-mono text-xs font-medium text-slate-800">${escapeHtml(formatPublicAddress(rule.hostname, rule.service, rule.managed && !inventory.read_only))}</span><span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${rule.managed && !inventory.read_only ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}">${rule.managed && !inventory.read_only ? ui.gateManaged : ui.externallyMaintained}</span></div>${rule.path ? `<p class="mt-1 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}<p class="mt-1 break-all font-mono text-xs leading-5 text-slate-700">→ ${escapeHtml(rule.service)}</p></li>`).join('')}</ul>` : `<p class="mt-2 text-sm text-slate-500">${ui.noExistingRules}</p>`}`;
+    return `<section data-inventory-kind="${inventory.kind === 'management' ? 'management' : 'forwarding'}" class="min-w-0 border-t border-slate-200 pt-3"><h4 class="flex flex-wrap items-baseline gap-2 text-sm font-semibold text-slate-800">${title}</h4>${content}</section>`;
   }).join('');
   return `<details id="existing-tunnel-rules" class="mt-3 border-t border-slate-200 pt-3"${open ? ' open' : ''}><summary class="cursor-pointer rounded text-sm font-medium text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-sky-500">${ui.existingRulesTitle}<span class="ml-2 text-xs font-normal text-slate-500">${escapeHtml(count)}</span></summary><div class="mt-3 grid gap-4">${groups || `<p class="text-sm text-slate-500">${ui.tunnelLoadFailed}</p>`}</div><p class="mt-3 text-xs leading-5 text-slate-500">${ui.externalRulesReadOnly}</p></details>`;
 }
@@ -306,6 +306,18 @@ function formRouteType() { return selectedMode() === 'tcp-direct' ? 'tcp' : 'htt
 
 function routeType(route) { return route.type === 'tcp' ? 'tcp' : 'http'; }
 function routeName(route) { return `${route.subdomain}.${baseDomain}`; }
+
+function formatPublicAddress(hostname, service, managed = false) {
+  if (!hostname) return ui.catchAllRule;
+  const host = String(hostname).replace(/^(?:https?|tcp|ssh):\/\//i, '');
+  let scheme = /^https?:\/\//i.test(service || '') ? 'https' : /^(?:tcp|ssh):\/\//i.test(service || '') ? 'tcp' : null;
+  if (!scheme && managed) {
+    const route = routes.find(route => routeName(route) === host);
+    if (route) scheme = routeType(route) === 'tcp' ? 'tcp' : 'https';
+  }
+  if (scheme) return `${scheme}://${host}`;
+  return service === 'http_status:404' ? `${ui.pathBlocked} · ${host}` : host;
+}
 
 function showRouteMessage(message, error = false, action) {
   const box = document.createElement('div');
@@ -489,10 +501,10 @@ function renderRoutes() {
   el.innerHTML = `<div class="grid min-w-0 gap-3 md:grid-cols-2">${routes.map((r) => {
     const name = escapeHtml(routeName(r));
     const tcp = routeType(r) === 'tcp';
-    const source = `${tcp ? 'tcp' : 'https'}://${name}`;
+    const source = escapeHtml(formatPublicAddress(routeName(r), r.target_service, true));
     const title = r.disabled || tcp
       ? `<h3 class="break-all text-base font-semibold tracking-tight ${r.disabled ? 'text-slate-400' : 'text-slate-950'}">${source}</h3>`
-      : `<a href="https://${name}" target="_blank" rel="noreferrer" class="mt-1 block group rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-sky-400/40"><h3 class="break-all text-base font-semibold tracking-tight text-slate-950 transition group-hover:text-sky-600">https://${name}</h3></a>`;
+      : `<a href="https://${name}" target="_blank" rel="noreferrer" class="mt-1 block group rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-sky-400/40"><h3 class="break-all text-base font-semibold tracking-tight text-slate-950 transition group-hover:text-sky-600">${source}</h3></a>`;
 
     return `
       <article class="w-full min-w-0 rounded-3xl border ${r.disabled ? 'border-slate-200 bg-slate-100/80' : 'border-slate-200 bg-slate-50'} p-4 shadow-card transition hover:-translate-y-0.5 hover:bg-white sm:p-5">

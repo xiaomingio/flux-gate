@@ -126,6 +126,6 @@
   "syncSuperseded": "本次操作已结束，但当前配置已有变化，请核对最新链路。",
   "retryOperation": "重试",
   "verifyOperation": "核验状态",
-  "forwardingTunnel": "业务转发",
-  "managementTunnel": "管理入口（只读）"
+  "forwardingTunnel": "业务转发 Tunnel（Gate 管理）",
+  "managementTunnel": "管理入口 Tunnel（只读）"
 }
