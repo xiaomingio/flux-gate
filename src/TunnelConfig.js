@@ -15,6 +15,20 @@ const END = '  # END FLUX GATE ROUTES';
 const LEGACY_BEGIN = '  # BEGIN FLUX GATE TCP';
 const LEGACY_END = '  # END FLUX GATE TCP';
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
+function parseYaml(contents) {
+  try { return YAML.parse(contents); }
+  catch { throw new Error('Tunnel configuration could not be parsed'); }
+}
+function publicService(service) {
+  if (typeof service !== 'string') return '';
+  if (!/^[a-z]+:\/\//i.test(service)) return service;
+  try {
+    const url = new URL(service);
+    if (!url.username && !url.password && !url.search && !url.hash) return service;
+    url.username = ''; url.password = ''; url.search = ''; url.hash = '';
+    return url.toString();
+  } catch { return 'Invalid service URL'; }
+}
 function execute(command, args) {
   return new Promise((resolve, reject) => childProcess.execFile(command, args, { timeout: 30_000, maxBuffer: 1024 * 1024 }, (error) => {
     if (error) reject(new Error(`${command} ${command === 'pm2' ? 'restart' : 'validation'} failed; previous configuration restored`));
@@ -46,6 +60,29 @@ class TunnelConfig {
     return (config.routes || []).map((route) => new Route(route).rule(config));
   }
 
+  inventory(settings) {
+    let original;
+    try { original = fs.readFileSync(settings.file, 'utf8'); }
+    catch { return { existing_rules: [], existing_rules_error: 'Tunnel configuration could not be read', current_verified: false }; }
+    try {
+      const document = YAML.parseDocument(original);
+      const sequence = document.get('ingress', true);
+      if (document.errors.length || !YAML.isSeq(sequence)) throw new Error('Tunnel ingress could not be parsed');
+      const ingress = document.toJS().ingress;
+      const ranges = [...original.matchAll(/^  # BEGIN FLUX GATE (?:ROUTES|TCP)\r?\n[\s\S]*?^  # END FLUX GATE (?:ROUTES|TCP)\r?\n?/gm)]
+        .map((match) => [match.index, match.index + match[0].length]);
+      let receipt;
+      try { receipt = JSON.parse(fs.readFileSync(`${settings.file}.flux-gate-applied.json`, 'utf8')); } catch {}
+      const existingRules = ingress.map((entry, index) => ({
+        hostname: typeof entry?.hostname === 'string' ? entry.hostname : null,
+        path: typeof entry?.path === 'string' ? entry.path : null,
+        service: publicService(entry?.service),
+        managed: ranges.some(([start, end]) => sequence.items[index]?.range?.[0] >= start && sequence.items[index]?.range?.[0] < end),
+      }));
+      return { original, ingress, existing_rules: existingRules, existing_rules_error: null, current_verified: receipt?.sha256 === hash(original) };
+    } catch { return { existing_rules: [], existing_rules_error: 'Tunnel ingress could not be parsed', current_verified: false }; }
+  }
+
   managed(original) {
     let without = original, entries = [], sections = 0;
     for (const [begin, end] of [[BEGIN, END], [LEGACY_BEGIN, LEGACY_END]]) {
@@ -56,7 +93,7 @@ class TunnelConfig {
       const pattern = new RegExp(`^${begin}\\r?\\n([\\s\\S]*?)^${end}\\r?\\n?`, 'm');
       const match = without.match(pattern);
       if (!match) throw new Error('Invalid managed route section');
-      entries = YAML.parse(match[1]) || [];
+      entries = parseYaml(match[1]) || [];
       if (!Array.isArray(entries) || entries.some((entry) => !entry || typeof entry.hostname !== 'string' || entry.path || entry.hostname.includes('*'))) throw new Error('Managed section must contain explicit hostname rules');
       without = without.replace(pattern, '');
     }
@@ -66,7 +103,7 @@ class TunnelConfig {
 
   candidate(original, rules) {
     const { without, entries } = this.managed(original);
-    const parsed = YAML.parse(without);
+    const parsed = parseYaml(without);
     if (!parsed || !Array.isArray(parsed.ingress) || !/^ingress:\s*\r?\n/m.test(without)) throw new Error('Tunnel ingress must be a block list');
     // Keep removed/renamed hostnames blocked so an HTTP wildcard cannot reopen them.
     rules = [...rules, ...entries.filter((entry) => !rules.some((rule) => rule.hostname === entry.hostname))
@@ -77,35 +114,38 @@ class TunnelConfig {
     const body = rules.length ? YAML.stringify(rules).trimEnd().split('\n').map((line) => `  ${line}`).join('\n') + '\n' : '';
     const block = `${BEGIN}\n${body}${END}\n`;
     const updated = without.replace(/^ingress:\s*\r?\n/m, (line) => line + block);
-    YAML.parse(updated);
+    parseYaml(updated);
     return updated;
   }
 
   status() {
+    let inventory, settings;
     try {
-      const settings = this.settings();
+      settings = this.settings();
       const rules = this.rules(settings.config);
-      if (!settings.enabled) return { enabled: false, status: 'disabled', rules, current_rules: [], current_verified: false, changes: [] };
-      const original = fs.readFileSync(settings.file, 'utf8');
+      inventory = this.inventory(settings);
+      const view = { existing_rules: inventory.existing_rules, existing_rules_error: inventory.existing_rules_error, current_verified: inventory.current_verified };
+      if (!settings.enabled) return { enabled: false, status: 'disabled', rules, current_rules: [], changes: [], ...view };
+      if (inventory.existing_rules_error) throw new Error(inventory.existing_rules_error);
+      const { original, ingress } = inventory;
       const desired = this.candidate(original, rules);
-      let receipt;
-      try { receipt = JSON.parse(fs.readFileSync(`${settings.file}.flux-gate-applied.json`, 'utf8')); } catch {}
-      const verified = receipt?.sha256 === hash(original);
+      const verified = inventory.current_verified;
       const desiredRules = this.managed(desired).entries;
-      const ingress = YAML.parse(original).ingress;
-      const currentRules = verified ? this.managed(original).entries : [];
+      const currentRules = verified ? inventory.existing_rules.filter((entry) => entry.managed).map((entry) => ({ hostname: entry.hostname, service: entry.service })) : [];
       const changes = desiredRules.map((rule) => {
         const current = verified ? ingress.find((entry) => !entry.path && (!entry.hostname || entry.hostname === rule.hostname ||
           entry.hostname.startsWith('*.') && rule.hostname.endsWith(entry.hostname.slice(1)))) : null;
         const same = current && JSON.stringify(current) === JSON.stringify(rule);
-        return { hostname: rule.hostname, desired_service: rule.service, current_service: current?.service || null,
+        return { hostname: rule.hostname, desired_service: rule.service, current_service: current ? publicService(current.service) : null,
           desired_path: Route.servicePath(rule.service, settings.config, rule.originRequest),
           current_path: verified ? Route.servicePath(current?.service, settings.config, current?.originRequest) : 'unknown',
           status: same ? 'applied' : 'pending' };
       });
       return { enabled: true, status: desired === original && verified ? 'applied' : 'pending',
-        rules: desiredRules, current_rules: currentRules, current_verified: verified, changes };
-    } catch (error) { return { enabled: true, status: 'error', rules: [], current_rules: [], current_verified: false, changes: [], error: error.message }; }
+        rules: desiredRules, current_rules: currentRules, changes, ...view };
+    } catch (error) { return { enabled: settings?.enabled ?? true, status: 'error', rules: [], current_rules: [],
+      current_verified: inventory?.current_verified || false, changes: [], existing_rules: inventory?.existing_rules || [],
+      existing_rules_error: inventory?.existing_rules_error || null, error: error.message }; }
   }
 
   async apply() {

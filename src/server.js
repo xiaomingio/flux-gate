@@ -83,10 +83,7 @@ function sanitizeRoute(route, config, tunnelStatus) {
 }
 
 function getRouteEffectiveAuth(route, config) {
-  if (route.no_password) return { noPassword: true };
-
   return {
-    noPassword: false,
     username: route.username || config.auth.username,
     passwordHash: route.password_hash || config.auth.password_hash,
   };
@@ -126,12 +123,9 @@ function translate(lang, key, vars = {}) {
 function verifyBasicAuth(req, loadConfig, route = null) {
   const config = loadConfig();
   const effectiveAuth = route ? getRouteEffectiveAuth(route, config) : {
-    noPassword: false,
     username: config.auth.username,
     passwordHash: config.auth.password_hash,
   };
-
-  if (effectiveAuth.noPassword) return true;
 
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Basic ')) return false;

@@ -77,6 +77,8 @@ ingress:
 
 API `GET /api/tunnel` 返回期望 `rules`、已确认 `current_rules`、`current_verified` 和逐域名 `changes`。`changes` 包含 `desired_service`、`current_service`、`desired_path`、`current_path` 和 `status`。`GET /api/routes` 为数组，各路由提供 `target_service`、`tunnel_service`、相同的当前/期望路径、`current_verified` 与 `publication_status`；不会返回密码哈希。
 
+管理页还会只读显示配置文件中的全部 ingress，包括管理域名、通配、独立 SSH、路径规则和最终回退。`existing_rules` 仅返回 `hostname`、`path`、`service` 与受管标识 `managed`；区块外入口没有编辑或接管操作。此视图表示文件已读取，运行状态仍取决于 `current_verified`，不能将读到文件视为服务已生效。集成停用或候选规则冲突时仍可读取现有配置；读取失败通过 `existing_rules_error` 显示，不回显 YAML 原文、凭据或请求头。
+
 也可在主机执行同一发布逻辑：
 
 ```sh

@@ -111,5 +111,15 @@
   "directConnection": "直连",
   "blockPublicAccess": "阻断公网入口",
   "targetHostPlaceholder": "192.168.1.100 / localhost / ...",
-  "customCredentialsRequired": "请填写自定义用户名和密码。"
+  "customCredentialsRequired": "请填写自定义用户名和密码。",
+  "existingRulesTitle": "现有 Tunnel 规则",
+  "existingRulesCount": "共 {count} 条 · 外部维护 {external} 条",
+  "configurationVerified": "已读取配置文件，与最近成功应用的配置一致。",
+  "configurationUnverified": "已读取配置文件，实际运行状态尚未核验。",
+  "catchAllRule": "所有其他请求",
+  "gateManaged": "Gate 受管",
+  "externallyMaintained": "外部维护 · 只读",
+  "rulePath": "路径",
+  "noExistingRules": "配置中暂无入口规则。",
+  "externalRulesReadOnly": "外部维护规则仅供查看，不会导入或接管。"
 }

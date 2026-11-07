@@ -9,6 +9,7 @@ const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
 const net = require('node:net');
+const crypto = require('node:crypto');
 const { once } = require('node:events');
 const { createApp, hashPassword } = require('../src/server');
 const Route = require('../src/Route');
@@ -151,4 +152,38 @@ test('malformed configuration fails closed instead of enabling default credentia
   fs.writeFileSync(configFile, '{invalid JSON');
   const invalid = createApp({ configFile });
   await assert.rejects(invalid.locals.ready, /could not be read or parsed/);
+});
+
+test('Tunnel API inventories all file rules without exposing secrets or taking ownership', async (t) => {
+  const { request, configFile } = await fixture(t, [{ subdomain: 'managed', ip: '127.0.0.1', port: 3000, no_password: true }]);
+  const file = path.join(path.dirname(configFile), 'tunnel.yml');
+  const original = 'tunnel: SECRET-TUNNEL-ID\ntoken: SECRET-TOKEN\ncredentials-file: /private/SECRET-CREDENTIAL.json\ningress:\n' +
+    '  # BEGIN FLUX GATE ROUTES\n  - hostname: managed.example.com\n    service: http://127.0.0.1:3000\n    originRequest:\n      httpHostHeader: 127.0.0.1:3000\n      httpHeaders:\n        Authorization: SECRET-HEADER\n  # END FLUX GATE ROUTES\n' +
+    '  - hostname: recovery.example.com\n    service: ssh://user:SECRET-PASSWORD@127.0.0.1:22?token=SECRET-QUERY\n' +
+    '  - hostname: example.com\n    service: http://127.0.0.1:8080\n' +
+    '  - hostname: "*.example.com"\n    path: /special/.*\n    service: http://127.0.0.1:3001\n' +
+    '  - hostname: "*.example.com"\n    service: http://127.0.0.1:8080\n  - service: http_status:404\n';
+  fs.writeFileSync(file, original);
+  fs.writeFileSync(`${file}.flux-gate-applied.json`, JSON.stringify({ sha256: crypto.createHash('sha256').update(original).digest('hex') }));
+  const config = JSON.parse(fs.readFileSync(configFile)); config.tunnel = { enabled: true, config_file: file };
+  fs.writeFileSync(configFile, JSON.stringify(config));
+  let response = await request('GET', '/api/tunnel');
+  let text = await response.text(), result = JSON.parse(text);
+  assert.equal(response.status, 200); assert.equal(result.current_verified, true);
+  assert.equal(result.existing_rules.length, 6);
+  assert.deepEqual(result.existing_rules[0], { hostname: 'managed.example.com', path: null, service: 'http://127.0.0.1:3000', managed: true });
+  assert.deepEqual(result.existing_rules[1], { hostname: 'recovery.example.com', path: null, service: 'ssh://127.0.0.1:22', managed: false });
+  assert.equal(result.existing_rules[3].path, '/special/.*');
+  assert.equal(result.existing_rules.at(-1).hostname, null);
+  assert.ok(!text.includes('SECRET-')); assert.ok(!text.includes('httpHeaders')); assert.ok(!text.includes('credentials-file'));
+  assert.equal(fs.readFileSync(file, 'utf8'), original);
+  config.tunnel.enabled = false; fs.writeFileSync(configFile, JSON.stringify(config));
+  result = await (await request('GET', '/api/tunnel')).json();
+  assert.equal(result.status, 'disabled'); assert.equal(result.existing_rules.length, 6);
+  config.tunnel.enabled = true; config.routes[0].subdomain = 'recovery'; fs.writeFileSync(configFile, JSON.stringify(config));
+  result = await (await request('GET', '/api/tunnel')).json();
+  assert.equal(result.status, 'error'); assert.equal(result.existing_rules.length, 6);
+  fs.writeFileSync(file, 'token: SECRET-TOKEN\ningress: [ invalid: SECRET-PARSER-SNIPPET');
+  text = await (await request('GET', '/api/tunnel')).text();
+  assert.ok(!text.includes('SECRET-')); assert.ok(JSON.parse(text).existing_rules_error);
 });

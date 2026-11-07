@@ -111,5 +111,15 @@
   "directConnection": "Direct",
   "blockPublicAccess": "Block public access",
   "targetHostPlaceholder": "192.168.1.100 / localhost / ...",
-  "customCredentialsRequired": "Enter both a custom username and password."
+  "customCredentialsRequired": "Enter both a custom username and password.",
+  "existingRulesTitle": "Existing Tunnel rules",
+  "existingRulesCount": "{count} total · {external} external",
+  "configurationVerified": "Read from the configuration file; matches the last successful Apply.",
+  "configurationUnverified": "Read from the configuration file; running state has not been verified.",
+  "catchAllRule": "All other requests",
+  "gateManaged": "Gate managed",
+  "externallyMaintained": "External · Read only",
+  "rulePath": "Path",
+  "noExistingRules": "No ingress rules in this configuration.",
+  "externalRulesReadOnly": "External rules are read only and will not be imported or taken over."
 }
