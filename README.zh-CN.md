@@ -16,12 +16,16 @@ Flux Gate 可以帮你：
 - 支持给每个转发项单独设置用户名和密码或无密码
 - 支持暂停和启用每个转发项目
 - 支持管理面板中英文切换
+- 管理原生 TCP 的本机监听、目标端口及连接生命周期
+- 显式发布 TCP ingress 到既有 Cloudflare Tunnel，包含校验、备份和失败回退
 
 示例：
 - `https://your-domain.com` → 管理后台
 - `https://demo.your-domain.com` → 你的内网服务
 
-Flux Gate 应用处理 HTTP/HTTPS 和 WebSocket 路由。同一 Cloudflare Tunnel 可以通过 `ssh://` / `tcp://` ingress 和官方客户端 `cloudflared` 直接转发 SSH、TCP 服务。这些连接绕过 Flux Gate 应用及其 HTTP Basic Auth；配置、公钥登录和恢复流程见 [SSH / TCP 接入](docs/tcp-forwarding.md)。
+Flux Gate 支持 HTTP Web 路由与原生 TCP 转发。TCP 路由在本机监听独立端口，转发到配置目标，并可从管理页发布到既有 Cloudflare Tunnel。TCP 由目标协议认证，Web 路由使用 HTTP Basic Auth。配置与发布流程见 [TCP 转发与 Tunnel 发布](docs/tcp-forwarding.md)。
+
+公网 `https://demo.example.com` 可以转发到内网 `http://192.168.1.10:3000`。Cloudflare 管理公网证书并终止浏览器 TLS，与 cloudflared 通过加密 Tunnel 通信。Flux Gate 当前固定使用 `http://` 连接 Web 目标，目前不支持 HTTPS origin；内部 HTTP 段不会自动变成 TLS，也不需要本机证书。
 
 ## 快速开始
 

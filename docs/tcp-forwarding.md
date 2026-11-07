@@ -1,72 +1,91 @@
-# Cloudflare Tunnel 的 SSH / TCP 接入
+# TCP 转发与 Cloudflare Tunnel
 
-Flux Gate 应用代理 HTTP/WebSocket；非 HTTP 服务由同一台主机的 Cloudflare Tunnel 直接转发。SSH 入口绕过 Flux Gate 应用，不需要在网页创建路由，也不使用网关 Basic Auth。
+Flux Gate 直接使用 Node.js TCP socket 转发字节流。HTTP 路由继续按子域名代理 Web 服务；TCP 路由使用独立的本机监听端口。管理界面提供 HTTP/TCP 类型、TCP 监听端口、目标地址、启停和删除。
 
-当前部署真源是 `deploy/cloudflare-tunnel/ssh.json`，SSH 服务目标为运行 Tunnel 主机的 loopback 端口。主机连接信息从 Shell Utils 的 `hosts.yml` 解析，使用稳定 host ID `mac-mini`，不在这里复制账号和内网地址。
+## 路由配置
 
-## 连接 Mac mini
-
-客户端安装 Cloudflare 官方工具：
-
-```sh
-brew install cloudflared
+```json
+{
+  "type": "tcp",
+  "subdomain": "database",
+  "listen_port": 15432,
+  "ip": "192.168.1.10",
+  "port": 5432,
+  "description": "Database access",
+  "disabled": false
+}
 ```
 
-内网可达时正常运行 `ssh mac-mini`。内网不可达时，在同一客户端使用既有 SSH key 和已核验的 Mac mini 主机指纹，经公网域名连接：
+`listen_port` 是 Flux Gate 本机的监听端口，只绑定 `127.0.0.1`，范围为 1024～65535，不能与管理端口或其他 TCP 路由重复。`ip` / `port` 是目标主机与端口。已有未填写 `type` 的路由按 HTTP 处理。
 
-```sh
-ssh -o BatchMode=yes -o PreferredAuthentications=publickey \
-  -o PasswordAuthentication=no -o KbdInteractiveAuthentication=no \
-  -o StrictHostKeyChecking=yes \
-  -o 'ProxyCommand=cloudflared access ssh --hostname ssh.iplab.cc' mac-mini
+保存启用的 TCP 路由时，后台先实际绑定端口，再原子保存配置。端口被占用、无权限或保存失败时，原有配置与监听继续有效。启停、修改目标、改名及删除会关闭该路由已有连接，后续连接使用新配置；启动时会重新建立已保存监听，绑定失败则停止启动并显示错误。
+
+每条路由最多 32 个连接，全部 TCP 路由合计最多 128 个。目标连接建立超时为 10 秒；转发使用标准流的背压和半关闭，不缓存整份传输，也不主动重试中断的业务请求。目标在界面中显示为固定的 `tcp://`，端口由用户自行填写。FTP 等使用额外数据连接的协议需要另行安排这些连接，单条 TCP 路由不能覆盖完整 FTP 服务。TCP 不使用 HTTP Basic Auth，认证与加密由目标协议负责，例如 SSH 公钥或数据库自身 TLS/账号。
+
+## 公网接入
+
+Cloudflare Tunnel 的 HTTP wildcard 规则不能把 TCP 自动交给网关。每个启用的 TCP 路由需要一条独立 ingress，例如：
+
+```yaml
+ingress:
+  - hostname: database.example.com
+    service: tcp://127.0.0.1:15432
+  - hostname: "*.example.com"
+    service: http://127.0.0.1:8080
+  - service: http_status:404
 ```
 
-仍然以 `mac-mini` 作为 SSH 目标，保留现有用户、IdentityFile、端口和 known_hosts 匹配方式；ProxyCommand 替换传输路径。不要改成未知主机并关闭主机指纹校验。`scp -o ...` 和 `rsync -e 'ssh -o ...'` 可以使用同样的 SSH 选项。
-
-此入口使用 SSH 公钥鉴权，未配置 Cloudflare Access，不需要浏览器登录或 service token。服务端统一关闭 SSH 密码及键盘交互认证；这不改变 macOS 账号密码、屏幕共享和其他服务的登录方式。
-
-Cloudflare Tunnel 的公开 SSH / TCP 接入需要客户端 `cloudflared access ssh` 或 `cloudflared access tcp`，不能直接向域名的公网 22 端口运行普通 SSH。Cloudflare 官方客户端通过 HTTPS/WebSocket 承载流量；这项接线不承诺更高吞吐或更低延迟。长连接可能断开，远程写入仍需使用可恢复脚本，不盲目重跑状态不明的操作。
-
-## 配置与上线
-
-先完成下文 SSH 认证加固并验收，再发布公网入口。不要先把仍接受密码的 SSH 服务放到公网。
-
-在 Mac mini 检查 `~/.cloudflared/config.yml`，将 `ssh.json` 的独立 hostname 规则置于 HTTP wildcard 规则之前。以下脚本只合并这条 SSH 规则，保留 Tunnel ID、凭据文件和其他 ingress；遇到同 hostname 的不同目标会停止。
+DNS 域名本身不限定 HTTP 或 TCP；这里的子域名用于让 cloudflared 选择 Tunnel 入口，不是网页 URL。HTTP 请求携带 Host，能够共用网关 HTTP 端口；普通 TCP 连接不携带 DNS 名，因此每条路由需要独立监听端口。TLS SNI 只适用于特定 TLS 流量，不能通用于 SSH 等协议；网关不额外实现协议识别或多路复用。域名还须通过 DNS 指向该 Tunnel。客户端使用官方 `cloudflared`：
 
 ```sh
-node "$HOME/workspace/flux-gate/deploy/cloudflare-tunnel/apply-ssh.mjs" --key-only-verified
-cloudflared --config "$HOME/.cloudflared/config.yml" tunnel ingress validate
-cloudflared --config "$HOME/.cloudflared/config.yml" tunnel ingress rule https://ssh.iplab.cc
-pm2 restart cloudflare-tunnel
+cloudflared access tcp --hostname database.example.com --url 127.0.0.1:15433
 ```
 
-当前域名的 wildcard DNS 已连接既有 Tunnel。部署后必须真实通过公网 ProxyCommand 新开 SSH key 登录，核对主机身份；再核对原 Flux Gate 管理入口和 Agent Beat HTTP 入口仍可用。`ingress validate`、域名解析和 TCP 端口可达都不能代替 SSH 登录验收。
+随后让数据库客户端连接本机 `127.0.0.1:15433`。SSH 目标也可使用 `cloudflared access ssh` 作为 SSH 的 ProxyCommand，服务端仍按 SSH key 鉴权。公开的 Tunnel TCP 入口需要 Cloudflare 官方客户端，不能直接向域名的任意公网 TCP 端口连接普通客户端。客户端传输由 Cloudflare 实现，Flux Gate 不实现额外的 WebSocket 隧道协议。
 
-若需恢复 Tunnel 配置，从脚本输出的 `$HOME/backups/cloudflare-tunnel/config/` 备份恢复 `~/.cloudflared/config.yml`，验证成功后只重启 `cloudflare-tunnel`。SSH 认证恢复使用下面的独立脚本。
+生产中可以另行维护独立的恢复入口，直接连接到目标服务，放在下述受管区块之外。这类入口不依赖 Flux Gate 应用是否运行。
 
-## SSH 密码关闭与屏幕共享恢复
+## 管理界面发布到 Tunnel
 
-`deploy/ssh/` 提供 macOS 系统 SSH 加固、恢复和超时回退脚本。先把三个脚本放进 Mac mini 上一个新的批次目录，例如 `$HOME/backups/ssh-hardening/<批次>/`，在原 SSH 会话保持连接、屏幕共享可恢复的条件下执行：
+在受信任的网关 `config.json` 中启用集成：
+
+```json
+{
+  "tunnel": {
+    "enabled": true,
+    "config_file": "/absolute/path/to/cloudflared/config.yml",
+    "process_name": "cloudflare-tunnel"
+  }
+}
+```
+
+省略 `config_file` 时使用运行用户的 `~/.cloudflared/config.yml`，省略 `process_name` 时使用 PM2 的 `cloudflare-tunnel`。网关进程必须能运行 `cloudflared`、`pm2`，读写 Tunnel 配置并重启该进程。配置由部署者维护，网页请求不能传入命令或文件路径。
+
+保存 TCP 路由只改变真实本机监听。管理页的 Tunnel 区域显示待应用状态；点击“应用到 Tunnel”并确认后，后台才发布公网接线。重启共享 Tunnel 时，现有 Tunnel 连接可能短暂中断。已应用且内容没有变化时，重复应用不会重启进程。
+
+后台只管理 `# BEGIN FLUX GATE TCP` 与 `# END FLUX GATE TCP` 之间的片段。原有 HTTP、独立 SSH 等其他 ingress 与注释保留；若要发布的 hostname 已由区块外规则占用，会停止并要求先处理冲突。不要手工移动或修改受管标记。
+
+发布流程使用进程内锁和排他文件锁：生成候选配置，运行 `cloudflared tunnel ingress validate`，将原配置备份到运行用户的 `~/backups/flux-gate/tunnel/`，核对源文件未并发变化，再原子替换并重启指定 Tunnel 进程。重启失败会还原原文件并再次重启；恢复重启也失败时明确返回需要人工恢复的错误。配置文件与备份以 600 权限保存。
+
+“已应用”表示受管片段与当前路由一致，且配置全文哈希对应成功的重启记录。它不代表 DNS、Cloudflare Access 策略或目标服务登录已验收；应使用公网客户端完成真实连接。配置变动、启停或删除后需要再次应用，才能移除或修改旧公网入口。
+
+也可在主机上执行同一发布逻辑：
 
 ```sh
-sudo /bin/bash "$HOME/backups/ssh-hardening/<批次>/harden-macos.sh"
+node deploy/cloudflare-tunnel/apply-tcp.cjs --config /absolute/path/to/flux-gate/config.json
 ```
 
-脚本只管理 `/etc/ssh/sshd_config.d/000-agent-beat-key-only.conf`，并检查主配置的 Include 顺序。修改前备份该文件的原有状态、保存主配置参考副本，并通过独立 root launchd 作业安排 180 秒自动回退。备份不包含 SSH 主机私钥。
+如进程意外退出留下 `.flux-gate.lock`，先确认没有仍在运行的发布操作、检查实际配置和 PM2 状态，再移除锁。不要盲目重试状态不明的发布。需要手动恢复时，使用已输出的备份文件还原 Tunnel 配置，运行原生校验后重启相同 Tunnel 进程；独立恢复入口应预先验证可用。
 
-校验包含 `sshd -t` 和 `sshd -T` 的默认及登录用户/loopback上下文，要求 `PubkeyAuthentication yes`、`PasswordAuthentication no`、`KbdInteractiveAuthentication no` 和 `AuthenticationMethods publickey`。Mac mini 使用 launchd 按连接启动 sshd，新连接读取新配置；脚本不重启 SSH、不关闭 Remote Login，也不操作屏幕共享。
+## HTTPS 与目标协议
 
-安装成功后立即从客户端新开一个独立 SSH key 连接，再以 `PreferredAuthentications=none`、`PubkeyAuthentication=no` 请求认证，检查服务端只提供 `publickey`。两项通过后，在新连接里执行脚本打印的 `touch <批次目录>/confirmed`；独立回退作业确认文件属于原登录用户后取消自动恢复，写入 `rollback-cancelled`。没有确认就会自动还原。
+公网 `https://demo.example.com` 可以指向目标 `http://192.168.1.10:3000`。浏览器到 Cloudflare 的 TLS 在 Cloudflare 边缘终止，其公网证书由 Cloudflare 管理和续期；Cloudflare 与本机 cloudflared 通过加密 Tunnel 通信。
 
-如果新连接失败，保持原会话并等待自动回退；也可通过 Mac mini 屏幕共享打开终端，执行事先已放到主机上的恢复脚本：
+Flux Gate 当前对 Web 目标固定使用 `http://`，目前不支持 HTTPS origin。公网使用 HTTPS 不要求本机目标安装 HTTPS 证书，也不意味着内部这段自动采用 TLS。loopback 目标使用 HTTP；跨局域网访问 HTTP 目标时，该内部网络段仍为明文，应按实际信任边界部署。若目标必须使用 HTTPS，需要另外实现并配置其证书信任。
 
-```sh
-sudo /bin/bash "$HOME/backups/ssh-hardening/<批次>/restore-macos.sh"
-```
-
-恢复脚本只还原本批次管理的 SSH 文件，运行 `sshd -t`，并显示恢复后的认证配置。用户在屏幕共享中输入自己的 sudo 密码；不要把密码写进提示词、脚本或日志。
+TCP 转发不解释协议内的 TLS 或证书。数据库、SSH 等协议的身份认证和端到端加密由相应服务与客户端负责。
 
 ## 官方资料
 
-- [通过客户端 cloudflared 连接 SSH](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/use-cases/ssh/ssh-cloudflared-authentication/)：SSH origin 和 ProxyCommand
-- [Tunnel ingress 支持的协议](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/routing-to-tunnel/protocols/)：SSH、TCP 与客户端要求
+- [Cloudflare Tunnel 支持的协议](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/routing-to-tunnel/protocols/)：TCP、SSH 与客户端要求
+- [客户端 cloudflared 连接 SSH](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/use-cases/ssh/ssh-cloudflared-authentication/)：SSH origin 和 ProxyCommand

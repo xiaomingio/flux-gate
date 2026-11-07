@@ -14,7 +14,20 @@
       "username": "",
       "password_hash": "",
       "no_password": false,
-      "disabled": false
+      "disabled": false,
+      "type": "http"
+    },
+    {
+      "type": "tcp",
+      "subdomain": "database",
+      "listen_port": 15432,
+      "ip": "192.168.1.10",
+      "port": 5432,
+      "description": "Database access",
+      "disabled": true
     }
-  ]
+  ],
+  "tunnel": {
+    "enabled": false
+  }
 }

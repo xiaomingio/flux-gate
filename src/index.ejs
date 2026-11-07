@@ -1,8 +1,9 @@
+<% /* 文件说明: 管理 HTTP 与 TCP 路由，提供类型相关字段、运行状态和安全操作反馈。 */ %>
 <!DOCTYPE html>
 <html lang="<%= ui.htmlLang %>">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title><%= ui.projectName %> · <%= ui.proxyManager %></title>
@@ -60,6 +61,7 @@
           </div>
           <p class="mt-3 text-sm leading-6 text-slate-500"><%= ui.routeListDescription %></p>
         </div>
+        <div id="tunnel-panel" class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4" aria-live="polite"></div>
         <div id="route-list"></div>
       </section>
 
@@ -72,28 +74,54 @@
         <form class="grid min-w-0 gap-4" onsubmit="saveRoute(event)">
           <input type="hidden" id="f-original-subdomain">
 
+          <fieldset class="min-w-0">
+            <legend class="mb-2 block text-sm font-medium text-slate-200"><%= ui.routeType %></legend>
+            <input type="hidden" name="type" id="f-type" value="http">
+            <div class="flex gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 p-1.5">
+              <label class="min-w-0 flex-1 cursor-pointer">
+                <input type="radio" name="route_type" id="f-type-http" value="http" checked class="peer sr-only">
+                <span class="block rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400">HTTP</span>
+              </label>
+              <label class="min-w-0 flex-1 cursor-pointer">
+                <input type="radio" name="route_type" id="f-type-tcp" value="tcp" class="peer sr-only">
+                <span class="block rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400">TCP</span>
+              </label>
+            </div>
+          </fieldset>
           <div class="min-w-0">
             <label for="f-sub" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.subdomain %></label>
             <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
-              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-0 bg-transparent px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-0">
+              <span id="f-sub-scheme" class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">https://</span>
+              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-0">
               <span class="inline-flex shrink-0 items-center border-l border-slate-700 bg-slate-900 px-4 text-sm font-medium text-slate-400">.<%= baseDomain %></span>
             </div>
           </div>
-          <div class="grid min-w-0 gap-4 sm:grid-cols-2">
-            <div class="min-w-0">
-              <label for="f-ip" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.targetIp %></label>
-              <input name="ip" id="f-ip" placeholder="192.168.1.100" required class="w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+          <div id="tcp-fields" class="hidden min-w-0">
+            <label for="f-listen-port" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.tcpListenPort %></label>
+            <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
+              <span class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">tcp://127.0.0.1:</span>
+              <input name="listen_port" id="f-listen-port" type="number" min="1024" max="65535" step="1" placeholder="10022" disabled aria-describedby="tcp-access-note" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-0">
             </div>
-            <div class="min-w-0">
-              <label for="f-port" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.port %></label>
-              <input name="port" id="f-port" placeholder="8080" required class="w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+            <p id="tcp-access-note" class="mt-2 text-sm leading-6 text-slate-300"><%= ui.tcpAccessNote %></p>
+          </div>
+          <div class="min-w-0">
+            <div class="mb-2 grid grid-cols-[minmax(0,1fr)_5rem] gap-2 text-sm font-medium text-slate-200">
+              <label for="f-ip"><%= ui.targetIp %></label>
+              <label for="f-port"><%= ui.port %></label>
             </div>
+            <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
+              <span id="f-target-scheme" class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">http://</span>
+              <input name="ip" id="f-ip" placeholder="192.168.1.100" required aria-describedby="target-host-help" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400">
+              <span class="inline-flex shrink-0 items-center border-x border-slate-700 px-2 text-slate-400" aria-hidden="true">:</span>
+              <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400">
+            </div>
+            <p id="target-host-help" class="mt-2 text-xs text-slate-400"><%= ui.targetHostHint %></p>
           </div>
           <div class="min-w-0">
             <label for="f-desc" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.descriptionOptional %></label>
             <input name="description" id="f-desc" placeholder="<%= ui.descriptionPlaceholder %>" class="w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
           </div>
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-200">
+          <fieldset id="http-auth-fields" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-200">
             <p class="mb-3 font-medium text-slate-100"><%= ui.authSectionTitle %></p>
             <div class="grid gap-3">
               <label class="flex items-start gap-3">
@@ -120,7 +148,7 @@
               </div>
             </div>
             <p id="no-password-warning" class="hidden mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300"><%= ui.noPasswordWarning %></p>
-          </div>
+          </fieldset>
           <label class="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">
             <input type="checkbox" id="f-enabled" name="enabled" checked class="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
             <span><%= ui.startRouteLabel %></span>
@@ -131,15 +159,112 @@
           </div>
         </form>
 
-        <div id="form-msg" class="mt-4"></div>
+        <div id="form-msg" role="status" aria-live="polite" class="mt-4"></div>
       </section>
     </main>
   </div>
 
 <script>
-const baseDomain = <%- JSON.stringify(baseDomain) %>;
-const ui = <%- JSON.stringify(ui) %>;
-const routes = <%- JSON.stringify(routes) %>;
+const baseDomain = <%- JSON.stringify(baseDomain).replace(/</g, '\\u003c') %>;
+const ui = <%- JSON.stringify(ui).replace(/</g, '\\u003c') %>;
+const routes = <%- JSON.stringify(routes).replace(/</g, '\\u003c') %>;
+let mutationPending = false;
+let tunnelState = null;
+let tunnelApplying = false;
+
+function renderTunnelStatus() {
+  const panel = document.getElementById('tunnel-panel');
+  const state = tunnelState;
+  const status = !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
+  panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="font-semibold text-slate-900">${ui.tunnelTitle}</h3><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : 'text-slate-600'}">${status}</span></div>
+    ${state?.rules?.length ? `<ul class="mt-3 grid gap-2 text-xs text-slate-700">${state.rules.map(rule => `<li class="break-all font-mono">${escapeHtml(rule.hostname)} → ${escapeHtml(rule.service)}</li>`).join('')}</ul>` : ''}
+    ${state?.error ? `<p class="mt-3 break-words text-sm text-red-700">${escapeHtml(state.error)}</p>` : ''}
+    ${state?.enabled ? `<button type="button" id="tunnel-apply-button" class="mt-3 cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${tunnelApplying ? ui.tunnelApplying : ui.tunnelApply}</button>` : state?.status === 'disabled' ? `<p class="mt-3 text-sm leading-6 text-slate-600">${ui.tunnelManualHint}</p>` : state?.status === 'error' ? `<button type="button" id="tunnel-retry-button" class="mt-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">${ui.tunnelRetry}</button>` : ''}`;
+  const button = document.getElementById('tunnel-apply-button');
+  if (button) {
+    button.disabled = mutationPending || tunnelApplying || state.status === 'applied';
+    button.addEventListener('click', applyTunnel);
+  }
+  document.getElementById('tunnel-retry-button')?.addEventListener('click', loadTunnelStatus);
+}
+
+async function loadTunnelStatus() {
+  try {
+    const response = await fetch('/api/tunnel');
+    if (!response.ok) throw new Error(response.status === 401 ? ui.relogin : ui.tunnelLoadFailed);
+    const data = await response.json();
+    if (typeof data.enabled !== 'boolean' || !Array.isArray(data.rules)) throw new Error(ui.tunnelLoadFailed);
+    tunnelState = data;
+  } catch (error) { tunnelState = { enabled: false, status: 'error', rules: [], error: error.message || ui.tunnelLoadFailed }; }
+  renderTunnelStatus();
+}
+
+async function applyTunnel() {
+  if (mutationPending || tunnelApplying || !tunnelState?.enabled || !confirm(ui.tunnelApplyConfirm)) return;
+  tunnelApplying = true;
+  setMutationPending(true);
+  renderTunnelStatus();
+  try {
+    const response = await fetch('/api/tunnel/apply', { method: 'POST' });
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || ui.tunnelApplyFailed);
+    showRouteMessage(ui.tunnelApplySuccess);
+  } catch (error) { showRouteMessage(error.message || ui.tunnelApplyFailed, true); }
+  finally {
+    tunnelApplying = false;
+    await loadTunnelStatus();
+    setMutationPending(false);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+}
+
+function routeType(route) { return route.type === 'tcp' ? 'tcp' : 'http'; }
+function routeName(route) { return `${route.subdomain}.${baseDomain}`; }
+
+function showRouteMessage(message, error = false) {
+  const box = document.createElement('div');
+  box.className = error
+    ? 'rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+    : 'rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100';
+  box.textContent = message;
+  document.getElementById('form-msg').replaceChildren(box);
+  if (error) box.scrollIntoView({ block: 'nearest' });
+}
+
+async function mutateRoute(url, options) {
+  const response = await fetch(url, options);
+  if (response.status === 401) throw new Error(ui.relogin);
+  const data = await response.json();
+  if (!response.ok || data.error) throw new Error(data.error || ui.routeRequestFailed);
+  if (!Array.isArray(data.routes)) throw new Error(ui.routeRequestFailed);
+  routes.splice(0, routes.length, ...data.routes);
+  renderRoutes();
+  setMutationPending(mutationPending);
+}
+
+function setMutationPending(pending) {
+  mutationPending = pending;
+  document.querySelectorAll('#route-list button, #route-submit-button, #route-cancel-button').forEach(button => { button.disabled = pending; });
+  document.getElementById('route-submit-button').setAttribute('aria-busy', String(pending));
+  const tunnelButton = document.getElementById('tunnel-apply-button');
+  if (tunnelButton) tunnelButton.disabled = pending || tunnelApplying || tunnelState?.status === 'applied';
+}
+
+function toggleRouteTypeFields() {
+  const tcp = document.getElementById('f-type').value === 'tcp';
+  document.getElementById('f-type-http').checked = !tcp;
+  document.getElementById('f-type-tcp').checked = tcp;
+  document.getElementById('f-sub-scheme').textContent = tcp ? 'tcp://' : 'https://';
+  document.getElementById('f-target-scheme').textContent = tcp ? 'tcp://' : 'http://';
+  document.getElementById('tcp-fields').classList.toggle('hidden', !tcp);
+  document.getElementById('f-listen-port').disabled = !tcp;
+  document.getElementById('f-listen-port').required = tcp;
+  document.getElementById('http-auth-fields').classList.toggle('hidden', tcp);
+  document.getElementById('http-auth-fields').disabled = tcp;
+}
 
 function updateRouteCount() {
   const routeCountBadge = document.getElementById('route-count-badge');
@@ -151,6 +276,7 @@ function updateRouteCount() {
 }
 
 function renderAuthBadgeLabel(route) {
+  if (routeType(route) === 'tcp') return ui.tcpTargetAuth;
   if (route.no_password) return ui.authNoneLabel;
   if (route.has_custom_auth) {
     if (route.username) {
@@ -162,16 +288,20 @@ function renderAuthBadgeLabel(route) {
 }
 
 function getRouteStatusLabel(route) {
-  return route.disabled ? ui.routeDisabledState : ui.routeEnabledState;
+  if (route.disabled) return ui.routeDisabledState;
+  if (routeType(route) === 'tcp') return ({ listening: ui.tcpListening, pending: ui.tcpPending, error: ui.tcpError })[route.listener_status] || ui.tcpPending;
+  return ui.routeEnabledState;
 }
 
 function getRouteStatusClass(route) {
+  if (!route.disabled && routeType(route) === 'tcp' && route.listener_status !== 'listening') return 'border-amber-200 bg-amber-50 text-amber-700';
   return route.disabled
     ? 'border-slate-300 bg-slate-100 text-slate-600'
     : 'border-emerald-200 bg-emerald-50 text-emerald-700';
 }
 
 function getRouteAuthClass(route) {
+  if (routeType(route) === 'tcp') return 'border-slate-200 bg-slate-50 text-slate-600';
   if (route.no_password) return 'border-red-200 bg-red-50 text-red-700';
   if (route.has_custom_auth) return 'border-sky-200 bg-sky-50 text-sky-700';
   return 'border-slate-200 bg-slate-50 text-slate-600';
@@ -216,10 +346,16 @@ function renderRoutes() {
   }
 
   el.innerHTML = `<div class="grid min-w-0 gap-3 md:grid-cols-2">${routes.map((r) => {
-    const routeName = `${r.subdomain}.${baseDomain}`;
-    const title = r.disabled
-      ? `<h3 class="break-all text-base font-semibold tracking-tight text-slate-400">${routeName}</h3>`
-      : `<a href="https://${routeName}" target="_blank" rel="noreferrer" class="mt-1 block group rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-sky-400/40"><h3 class="break-all text-base font-semibold tracking-tight text-slate-950 transition group-hover:text-sky-600">${routeName}</h3></a>`;
+    const name = escapeHtml(routeName(r));
+    const tcp = routeType(r) === 'tcp';
+    const source = `${tcp ? 'tcp' : 'https'}://${name}`;
+    const title = r.disabled || tcp
+      ? `<h3 class="break-all text-base font-semibold tracking-tight ${r.disabled ? 'text-slate-400' : 'text-slate-950'}">${source}</h3>`
+      : `<a href="https://${name}" target="_blank" rel="noreferrer" class="mt-1 block group rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-sky-400/40"><h3 class="break-all text-base font-semibold tracking-tight text-slate-950 transition group-hover:text-sky-600">https://${name}</h3></a>`;
+    const targetHost = String(r.ip).includes(':') && !String(r.ip).startsWith('[') ? `[${r.ip}]` : r.ip;
+    const targetProtocol = tcp ? 'tcp' : 'http';
+    const target = `${escapeHtml(targetProtocol)}://${escapeHtml(targetHost)}:${escapeHtml(r.port)}`;
+    const connection = tcp ? `<span class="block">→ tcp://127.0.0.1:${escapeHtml(r.listen_port)}</span><span class="block">→ ${target}</span>` : `→ ${target}`;
 
     return `
       <article class="w-full min-w-0 rounded-3xl border ${r.disabled ? 'border-slate-200 bg-slate-100/80' : 'border-slate-200 bg-slate-50'} p-4 shadow-card transition hover:-translate-y-0.5 hover:bg-white sm:p-5">
@@ -227,19 +363,21 @@ function renderRoutes() {
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
               <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">${ui.subdomain}</p>
+              <span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">${tcp ? 'TCP' : 'HTTP'}</span>
               <span class="rounded-full border px-2.5 py-1 text-[11px] font-medium ${getRouteStatusClass(r)}">${getRouteStatusLabel(r)}</span>
             </div>
             <div class="mt-1">${title}</div>
-            <div class="mt-2 rounded-2xl bg-white px-3 py-2 font-mono text-sm text-slate-700 shadow-sm">${r.ip}:${r.port}</div>
+            <div class="mt-2 break-all rounded-2xl bg-white px-3 py-2 font-mono text-sm text-slate-700 shadow-sm">${connection}</div>
             <div class="mt-2 flex flex-wrap gap-2 text-xs font-medium">
-              <span class="rounded-full border px-2.5 py-1 ${getRouteAuthClass(r)}">${renderAuthBadgeLabel(r)}</span>
+              <span class="rounded-full border px-2.5 py-1 ${getRouteAuthClass(r)}">${escapeHtml(renderAuthBadgeLabel(r))}</span>
             </div>
-            <p class="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">${r.description || ui.noDescription}</p>
+            ${tcp ? `<details class="mt-2 text-sm text-slate-600"><summary class="cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${ui.tcpTunnelSettings}</summary><p class="mt-2 leading-6">${ui.tcpTunnelHint}</p></details>` : ''}
+            <p class="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">${escapeHtml(r.description || ui.noDescription)}</p>
           </div>
           <div class="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end sm:justify-start sm:self-start">
-            <button type="button" aria-label="${ui.editLabel} ${routeName}" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600" onclick="editRoute('${r.subdomain}')">${icon('edit')}</button>
-            <button type="button" aria-label="${r.disabled ? ui.enableLabel : ui.disableLabel} ${routeName}" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600" onclick="toggleRouteDisabled('${r.subdomain}')">${icon(r.disabled ? 'play' : 'pause')}</button>
-            <button type="button" aria-label="${ui.deleteLabel} ${routeName}" class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" onclick="deleteRoute('${r.subdomain}')">${icon('trash')}</button>
+            <button type="button" data-action="edit" data-subdomain="${escapeHtml(r.subdomain)}" title="${ui.editLabel}" aria-label="${ui.editLabel} ${name}" class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${icon('edit')}</button>
+            <button type="button" data-action="toggle" data-subdomain="${escapeHtml(r.subdomain)}" title="${r.disabled ? ui.enableLabel : ui.disableLabel}" aria-label="${r.disabled ? ui.enableLabel : ui.disableLabel} ${name}" class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${icon(r.disabled ? 'play' : 'pause')}</button>
+            <button type="button" data-action="delete" data-subdomain="${escapeHtml(r.subdomain)}" title="${ui.deleteLabel}" aria-label="${ui.deleteLabel} ${name}" class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${icon('trash')}</button>
           </div>
         </div>
       </article>`;
@@ -247,6 +385,8 @@ function renderRoutes() {
 }
 
 function resetRouteForm() {
+  document.getElementById('f-type').value = 'http';
+  document.getElementById('f-listen-port').value = '';
   document.getElementById('f-original-subdomain').value = '';
   document.getElementById('f-sub').value = '';
   document.getElementById('f-ip').value = '';
@@ -257,6 +397,7 @@ function resetRouteForm() {
   document.getElementById('auth-mode-default').checked = true;
   document.getElementById('f-enabled').checked = true;
   toggleAuthModeFields();
+  toggleRouteTypeFields();
   document.getElementById('route-form-title').textContent = ui.addOrUpdateRoute;
   document.getElementById('route-form-subtitle').textContent = ui.addPanelDescription;
   document.getElementById('route-submit-button').textContent = ui.add;
@@ -264,10 +405,13 @@ function resetRouteForm() {
 }
 
 function editRoute(subdomain) {
+  if (mutationPending) return;
   const route = routes.find((item) => item.subdomain === subdomain);
   if (!route) return;
 
   document.getElementById('f-original-subdomain').value = route.subdomain;
+  document.getElementById('f-type').value = routeType(route);
+  document.getElementById('f-listen-port').value = route.listen_port || '';
   document.getElementById('f-sub').value = route.subdomain;
   document.getElementById('f-ip').value = route.ip;
   document.getElementById('f-port').value = route.port;
@@ -279,6 +423,7 @@ function editRoute(subdomain) {
   else document.getElementById('auth-mode-default').checked = true;
   document.getElementById('f-enabled').checked = !Boolean(route.disabled);
   toggleAuthModeFields();
+  toggleRouteTypeFields();
   document.getElementById('route-form-title').textContent = ui.addOrUpdateRoute;
   document.getElementById('route-form-subtitle').textContent = ui.editingRoute.replace('{route}', `${route.subdomain}.${baseDomain}`);
   document.getElementById('route-submit-button').textContent = ui.update;
@@ -288,91 +433,84 @@ function editRoute(subdomain) {
 
 async function saveRoute(e) {
   e.preventDefault();
+  if (mutationPending) return;
   const originalSubdomain = document.getElementById('f-original-subdomain').value.trim();
-  const subdomain = document.getElementById('f-sub').value.trim();
-  const ip = document.getElementById('f-ip').value.trim();
-  const port = document.getElementById('f-port').value.trim();
-  const description = document.getElementById('f-desc').value.trim();
-  const username = document.getElementById('f-username').value.trim();
-  const password = document.getElementById('f-password').value;
-  const authMode = document.querySelector('input[name="auth_mode"]:checked')?.value || 'default';
-  const no_password = authMode === 'none';
-  const effectiveUsername = authMode === 'custom' ? username : '';
-  const effectivePassword = authMode === 'custom' ? password : '';
+  const type = document.getElementById('f-type').value;
   const disabled = !document.getElementById('f-enabled').checked;
-  const msg = document.getElementById('form-msg');
-
-  const res = await fetch('/api/routes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      original_subdomain: originalSubdomain,
-      subdomain,
-      ip,
-      port,
-      description,
-      username: effectiveUsername,
-      password: effectivePassword,
-      no_password,
-      disabled,
-    }),
-  });
-
-  if (res.status === 401) {
-    alert(ui.relogin);
-    return;
+  const previous = routes.find(route => route.subdomain === originalSubdomain);
+  if (previous && !previous.disabled && disabled && !confirm(ui.disableConfirm.replace('{route}', routeName(previous)))) return;
+  const input = {
+    original_subdomain: originalSubdomain,
+    subdomain: document.getElementById('f-sub').value.trim(),
+    type,
+    ip: document.getElementById('f-ip').value.trim(),
+    port: Number(document.getElementById('f-port').value),
+    description: document.getElementById('f-desc').value.trim(),
+    disabled,
+  };
+  if (type === 'tcp') {
+    input.listen_port = Number(document.getElementById('f-listen-port').value);
   }
-
-  const data = await res.json();
-  if (data.error) {
-    msg.innerHTML = `<div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">${data.error}</div>`;
-    return;
+  else {
+    const authMode = document.querySelector('input[name="auth_mode"]:checked')?.value || 'default';
+    input.username = authMode === 'custom' ? document.getElementById('f-username').value.trim() : '';
+    input.password = authMode === 'custom' ? document.getElementById('f-password').value : '';
+    input.no_password = authMode === 'none';
   }
-
-  routes.splice(0, routes.length, ...(data.routes || []));
-  msg.innerHTML = `<div class="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">${originalSubdomain ? ui.routeSavedUpdated : ui.routeSavedAdded}</div>`;
-  renderRoutes();
-  resetRouteForm();
+  setMutationPending(true);
+  try {
+    await mutateRoute('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+    resetRouteForm();
+    showRouteMessage(originalSubdomain ? ui.routeSavedUpdated : ui.routeSavedAdded);
+    await loadTunnelStatus();
+  } catch (error) { showRouteMessage(error.message || ui.routeRequestFailed, true); }
+  finally { setMutationPending(false); }
 }
 
 async function toggleRouteDisabled(subdomain) {
-  const route = routes.find((item) => item.subdomain === subdomain);
-  if (!route) return;
-
-  const res = await fetch(`/api/routes/${subdomain}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ disabled: !route.disabled }),
-  });
-
-  if (res.status === 401) {
-    alert(ui.relogin);
-    return;
-  }
-
-  const data = await res.json();
-  if (data.error) return;
-  routes.splice(0, routes.length, ...(data.routes || []));
-  renderRoutes();
+  if (mutationPending) return;
+  const route = routes.find(item => item.subdomain === subdomain);
+  if (!route || (!route.disabled && !confirm(ui.disableConfirm.replace('{route}', routeName(route))))) return;
+  setMutationPending(true);
+  try {
+    await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disabled: !route.disabled }) });
+    showRouteMessage(ui.routeSavedUpdated);
+    await loadTunnelStatus();
+  } catch (error) { showRouteMessage(error.message || ui.routeRequestFailed, true); }
+  finally { setMutationPending(false); }
 }
 
 async function deleteRoute(subdomain) {
-  const routeName = `${subdomain}.${baseDomain}`;
-  if (!confirm(ui.deleteConfirm.replace('{route}', routeName))) return;
-  await fetch(`/api/routes/${subdomain}`, { method: 'DELETE' });
-  const idx = routes.findIndex((r) => r.subdomain === subdomain);
-  if (idx >= 0) routes.splice(idx, 1);
-  renderRoutes();
-  if (document.getElementById('f-original-subdomain').value === subdomain) {
-    resetRouteForm();
-  }
+  if (mutationPending) return;
+  const route = routes.find(item => item.subdomain === subdomain);
+  if (!route || !confirm(ui.deleteConfirm.replace('{route}', routeName(route)))) return;
+  setMutationPending(true);
+  try {
+    await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'DELETE' });
+    if (document.getElementById('f-original-subdomain').value === subdomain) resetRouteForm();
+    showRouteMessage(ui.routeDeleted);
+    await loadTunnelStatus();
+  } catch (error) { showRouteMessage(error.message || ui.routeRequestFailed, true); }
+  finally { setMutationPending(false); }
 }
+
+document.getElementById('route-list').addEventListener('click', event => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  ({ edit: editRoute, toggle: toggleRouteDisabled, delete: deleteRoute })[button.dataset.action]?.(button.dataset.subdomain);
+});
+document.querySelectorAll('input[name="route_type"]').forEach(input => input.addEventListener('change', () => {
+  document.getElementById('f-type').value = input.value;
+  toggleRouteTypeFields();
+}));
 
 renderRoutes();
 document.querySelectorAll('input[name="auth_mode"]').forEach((input) => {
   input.addEventListener('change', toggleAuthModeFields);
 });
 toggleAuthModeFields();
+toggleRouteTypeFields();
+loadTunnelStatus();
 </script>
 </body>
 </html>

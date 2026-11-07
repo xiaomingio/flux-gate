@@ -16,12 +16,16 @@ Flux Gate lets you:
 - optionally set a custom username/password or no password for each forwarded route
 - pause and re-enable each forwarded route individually
 - switch the dashboard between Chinese and English
+- manage TCP loopback listeners, target ports and connection lifecycle
+- explicitly publish TCP ingress to an existing Cloudflare Tunnel with validation and rollback
 
 Example:
 - `https://your-domain.com` → admin panel
 - `https://demo.your-domain.com` → your internal service
 
-Flux Gate handles HTTP/HTTPS and WebSocket web routes. The same Cloudflare Tunnel can publish SSH or TCP services directly with `ssh://` / `tcp://` ingress rules and the official client-side `cloudflared` tool. These connections bypass the Flux Gate application and its HTTP Basic Auth. See [SSH / TCP setup](docs/tcp-forwarding.md) for SSH keys, ProxyCommand, deployment and recovery.
+Flux Gate supports HTTP web routes and native TCP forwarding. TCP routes bind a loopback listener, forward to the configured target, and can be published through Cloudflare Tunnel from the admin panel. Target protocols handle their own authentication; HTTP Basic Auth applies to web routes. See [TCP forwarding and Tunnel publishing](docs/tcp-forwarding.md).
+
+A public HTTPS URL such as `https://demo.example.com` can forward to an internal HTTP target such as `http://192.168.1.10:3000`. Cloudflare manages the public certificate and terminates browser TLS; its connection to cloudflared uses an encrypted Tunnel. Flux Gate currently uses `http://` for web targets; HTTPS origins are not supported. The internal HTTP segment does not become TLS automatically and does not require a local certificate.
 
 ## Quick start
 

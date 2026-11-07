@@ -12,6 +12,7 @@ npm-debug.log*
 
 # Config (copy config.sample.json to config.json and customize)
 config.json
+config.json.*.tmp
 
 # OS
 .DS_Store
