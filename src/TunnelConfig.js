@@ -52,7 +52,20 @@ class TunnelConfig {
     const file = integration.config_file || path.join(os.homedir(), '.cloudflared/config.yml');
     const processName = integration.process_name || 'cloudflare-tunnel';
     if (!path.isAbsolute(file) || !/^[a-zA-Z0-9_.-]+$/.test(processName)) throw new Error('Invalid Tunnel integration settings');
-    return { config, file, processName, enabled: integration.enabled === true };
+    const inventoryFiles = integration.inventory_files || [];
+    if (!Array.isArray(inventoryFiles) || inventoryFiles.some((entry) => !entry || typeof entry.label !== 'string' || !entry.label.trim() ||
+        typeof entry.config_file !== 'string' || !path.isAbsolute(entry.config_file))) throw new Error('Invalid read-only Tunnel inventory settings');
+    return { config, file, processName, inventoryFiles, enabled: integration.enabled === true };
+  }
+
+  assertWritable(settings) {
+    const target = fs.statSync(settings.file), canonical = fs.realpathSync(settings.file);
+    for (const entry of settings.inventoryFiles) {
+      const source = fs.statSync(entry.config_file);
+      if (fs.realpathSync(entry.config_file) === canonical || source.dev === target.dev && source.ino === target.ino) {
+        throw Object.assign(new Error('The business Tunnel cannot be the same file as a read-only management Tunnel'), { status: 409 });
+      }
+    }
   }
 
   rules(config) {
@@ -81,6 +94,14 @@ class TunnelConfig {
       }));
       return { original, ingress, existing_rules: existingRules, existing_rules_error: null, current_verified: receipt?.sha256 === hash(original) };
     } catch { return { existing_rules: [], existing_rules_error: 'Tunnel ingress could not be parsed', current_verified: false }; }
+  }
+
+  inventories(settings, primary) {
+    const pick = (inventory) => ({ existing_rules: inventory.existing_rules, existing_rules_error: inventory.existing_rules_error, current_verified: inventory.current_verified });
+    return [{ kind: 'forwarding', label: null, read_only: false, ...pick(primary) }, ...settings.inventoryFiles.map((entry) => {
+      const inventory = this.inventory({ file: entry.config_file });
+      return { kind: 'management', label: entry.label, read_only: true, ...pick(inventory), existing_rules: inventory.existing_rules.map((rule) => ({ ...rule, managed: false })) };
+    })];
   }
 
   managed(original) {
@@ -119,14 +140,16 @@ class TunnelConfig {
   }
 
   status() {
-    let inventory, settings;
+    let inventory, settings, inventories = [];
     try {
       settings = this.settings();
       const rules = this.rules(settings.config);
       inventory = this.inventory(settings);
-      const view = { existing_rules: inventory.existing_rules, existing_rules_error: inventory.existing_rules_error, current_verified: inventory.current_verified };
+      inventories = this.inventories(settings, inventory);
+      const view = { existing_rules: inventory.existing_rules, existing_rules_error: inventory.existing_rules_error, current_verified: inventory.current_verified, inventories };
       if (!settings.enabled) return { enabled: false, status: 'disabled', rules, current_rules: [], changes: [], ...view };
       if (inventory.existing_rules_error) throw new Error(inventory.existing_rules_error);
+      this.assertWritable(settings);
       const { original, ingress } = inventory;
       const desired = this.candidate(original, rules);
       const verified = inventory.current_verified;
@@ -145,23 +168,39 @@ class TunnelConfig {
         rules: desiredRules, current_rules: currentRules, changes, ...view };
     } catch (error) { return { enabled: settings?.enabled ?? true, status: 'error', rules: [], current_rules: [],
       current_verified: inventory?.current_verified || false, changes: [], existing_rules: inventory?.existing_rules || [],
-      existing_rules_error: inventory?.existing_rules_error || null, error: error.message }; }
+      existing_rules_error: inventory?.existing_rules_error || null, inventories, error: error.message }; }
   }
 
-  async apply() {
+  async transaction(action) {
     if (this.busy) throw Object.assign(new Error('Tunnel publish is already running'), { status: 409 });
     this.busy = true;
-    let lock, lockFile, candidateFile;
+    let lock, lockFile;
     try {
       const settings = this.settings();
-      const routeSnapshot = JSON.stringify(settings.config);
       if (!settings.enabled) throw Object.assign(new Error('Tunnel integration is disabled in configuration'), { status: 409 });
+      this.assertWritable(settings);
       lockFile = `${settings.file}.flux-gate.lock`;
       try { lock = fs.openSync(lockFile, 'wx', 0o600); }
       catch (error) {
         if (error.code === 'EEXIST') throw Object.assign(new Error('Tunnel configuration is locked; inspect any previous publish before retrying'), { status: 409 });
         throw error;
       }
+      return await action(() => this.publish(settings));
+    } finally {
+      if (lock !== undefined) { fs.closeSync(lock); fs.unlinkSync(lockFile); }
+      this.busy = false;
+    }
+  }
+
+  apply() { return this.transaction((publish) => publish()); }
+
+  async publish(lockedSettings) {
+    let candidateFile;
+    try {
+      const settings = this.settings();
+      if (settings.file !== lockedSettings.file || settings.processName !== lockedSettings.processName || !settings.enabled) throw new Error('Tunnel settings changed during operation');
+      this.assertWritable(settings);
+      const routeSnapshot = JSON.stringify(settings.config);
       const original = fs.readFileSync(settings.file, 'utf8');
       const updated = this.candidate(original, this.rules(settings.config));
       if (updated === original && this.status().status === 'applied') return { ok: true, ...this.status() };
@@ -190,8 +229,6 @@ class TunnelConfig {
       return { ok: true, backup, ...this.status() };
     } finally {
       if (candidateFile && fs.existsSync(candidateFile)) fs.unlinkSync(candidateFile);
-      if (lock !== undefined) { fs.closeSync(lock); fs.unlinkSync(lockFile); }
-      this.busy = false;
     }
   }
 }

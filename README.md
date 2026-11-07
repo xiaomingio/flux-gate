@@ -17,7 +17,7 @@ Flux Gate lets you:
 - pause and re-enable each forwarded route individually
 - switch the dashboard between Chinese and English
 - connect HTTP and TCP targets directly through native Cloudflare Tunnel ingress
-- explicitly apply routing changes with validation, backups and rollback
+- automatically synchronize routing changes with validation, backups and rollback
 
 Example:
 - `https://your-domain.com` → admin panel
@@ -31,7 +31,7 @@ Choose one of three route modes:
 | Direct HTTP | Cloudflare → cloudflared → target |
 | Direct TCP | Cloudflare client → Cloudflare → cloudflared → target |
 
-Save the configuration, then apply it to Tunnel. Until application succeeds, previous public ingress can remain active. Direct services use their own authentication. See [routing and Tunnel publishing](docs/tcp-forwarding.md).
+Save, pause, resume and delete operations automatically synchronize the business Tunnel. Success is reported only after synchronization. Direct services use their own authentication. See [routing and Tunnel publishing](docs/tcp-forwarding.md).
 
 A public HTTPS URL such as `https://demo.example.com` can forward to an internal HTTP target such as `http://192.168.1.10:3000`. Cloudflare manages the public certificate and terminates browser TLS; its connection to cloudflared uses an encrypted Tunnel. Flux Gate currently uses `http://` for web targets; HTTPS origins are not supported. The internal HTTP segment does not become TLS automatically and does not require a local certificate.
 
@@ -83,7 +83,7 @@ Field summary:
 - `routes[].username` / `routes[].password_hash`: pair of custom HTTP credentials; omit both for default credentials. Custom saves in the UI/API require both a username and a freshly entered password, including edits.
 - `routes[].type`: `http` (default) or `tcp`
 - `routes[].no_password`: HTTP only; `true` connects Tunnel directly to the target, `false` routes through Gate Basic Auth
-- `routes[].disabled`: saves a blocked route; apply to Tunnel to block its public hostname
+- `routes[].disabled`: keeps the route saved and synchronizes a 404 rule for its public hostname
 
 To generate a password hash:
 
@@ -91,38 +91,20 @@ To generate a password hash:
 node -e "console.log(require('crypto').createHash('sha256').update('your-password').digest('hex'))"
 ```
 
-### 4. Prepare Cloudflare Tunnel
+### 4. Configure separate Tunnels
 
-```bash
-cloudflared tunnel login
-cloudflared tunnel create my-tunnel
-cloudflared tunnel route dns my-tunnel your-domain.com
-cloudflared tunnel route dns my-tunnel "*.your-domain.com"
-```
+Follow the [dual-Tunnel setup](docs/tcp-forwarding.md#双-tunnel-隔离): keep the management domain and optional explicit recovery hostname on one Tunnel, and business wildcard/hostnames on the other. Set the writable business `config_file` / `process_name` and read-only management `inventory_files` in Gate configuration.
 
-Create the Tunnel ingress and enable the integration using the [routing guide](docs/tcp-forwarding.md#tunnel-integration).
-
-### 5. Start services
-
-Terminal 1:
+### 5. Start the gateway
 
 ```bash
 npm start
-```
-
-Terminal 2:
-
-```bash
-cloudflared tunnel run my-tunnel
-```
-
-## Run with PM2
-
-```bash
+# Or run persistently:
 pm2 start src/server.js --name flux-gate
-pm2 start cloudflared --name cloudflare-tunnel -- tunnel run my-tunnel
 pm2 save
 ```
+
+The routing guide covers the two independent cloudflared processes, credentials, DNS, automatic synchronization and recovery. Credentials remain private on the deployment host.
 
 ## Default login
 
@@ -153,7 +135,7 @@ Check these first:
 4. the target service is actually running
 
 ### How do I add a new route?
-Open the admin panel, fill in subdomain / IP / port, and save it. You can also edit route-specific username/password, allow no password, or disable the route. Changes are saved to `config.json`; click Apply to Tunnel to update public ingress for every mode. A direct route switched to password protection remains directly accessible until application succeeds.
+Open the admin panel, fill in subdomain / IP / port, and save it. You can also edit route-specific username/password, allow no password, or disable the route. Changes are saved and synchronized automatically. If the request disconnects during Tunnel reload, the UI reads its operation receipt instead of repeating the write. Confirmed rollback failures can be retried explicitly.
 
 ## License
 

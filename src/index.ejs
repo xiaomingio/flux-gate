@@ -23,6 +23,11 @@
       },
     };
   </script>
+  <style>
+    #f-port { appearance: textfield; -moz-appearance: textfield; }
+    #f-port::-webkit-inner-spin-button,
+    #f-port::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
   <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -94,9 +99,9 @@
           <div id="route-flow" class="grid min-w-0 gap-2">
             <div class="min-w-0 rounded-2xl border border-slate-700 bg-slate-900/60 p-3">
               <label for="f-sub" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.publicAddress %></label>
-            <div class="flex min-w-0 items-center">
+            <div class="flex min-w-0 items-baseline">
               <span id="f-sub-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-400" aria-hidden="true">https://</span>
-              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 pt-1 pb-0.5 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
               <span class="inline-flex shrink-0 items-center px-4 text-sm font-medium text-slate-400">.<%= baseDomain %></span>
             </div>
             </div>
@@ -142,11 +147,11 @@
               <label for="f-ip"><%= ui.targetIp %></label>
               <label for="f-port"><%= ui.port %></label>
             </div>
-            <div class="flex min-w-0 items-center">
+            <div class="flex min-w-0 items-baseline">
               <span id="f-target-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-400" aria-hidden="true">http://</span>
-              <input name="ip" id="f-ip" placeholder="<%= ui.targetHostPlaceholder %>" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <input name="ip" id="f-ip" placeholder="<%= ui.targetHostPlaceholder %>" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 pt-1 pb-0.5 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
               <span class="inline-flex shrink-0 items-center px-2 text-slate-400" aria-hidden="true">:</span>
-              <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 pt-1 pb-0.5 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
             </div>
             </div>
           </div>
@@ -177,34 +182,36 @@ const ui = <%- JSON.stringify(ui).replace(/</g, '\\u003c') %>;
 const routes = <%- JSON.stringify(routes).replace(/</g, '\\u003c') %>;
 let mutationPending = false;
 let tunnelState = null;
-let tunnelApplying = false;
+let unconfirmedOperation = null;
+let failedMutation = null;
 
 function renderTunnelStatus() {
   const panel = document.getElementById('tunnel-panel');
   const state = tunnelState;
   const existingOpen = document.getElementById('existing-tunnel-rules')?.open || false;
-  const status = !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
+  const status = mutationPending && !unconfirmedOperation ? ui.routeSyncing : !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
   panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="font-semibold text-slate-900">${ui.tunnelTitle}</h3><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : 'text-slate-600'}">${status}</span></div>
     ${state?.changes?.length ? `<ul class="mt-3 grid gap-3 text-xs text-slate-700">${state.changes.filter(change => change.status !== 'applied' && change.status !== 'disabled').map(change => `<li class="grid gap-1 border-t border-slate-200 pt-2"><span class="break-all font-medium">${escapeHtml(change.hostname)}</span><span class="break-all">${ui.currentPath}: ${escapeHtml(state.current_verified ? change.current_service || pathLabel(change.current_path) : ui.currentUnknown)}</span><span class="break-all text-amber-800">${ui.desiredPath}: ${escapeHtml(change.desired_service || pathLabel(change.desired_path))}</span></li>`).join('')}</ul>` : ''}
     ${state ? renderExistingRules(state, existingOpen) : ''}
     ${state?.error ? `<p class="mt-3 break-words text-sm text-red-700">${escapeHtml(state.error)}</p>` : ''}
-    ${state?.enabled ? `<button type="button" id="tunnel-apply-button" class="mt-3 cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${tunnelApplying ? ui.tunnelApplying : ui.tunnelApply}</button>` : state?.status === 'disabled' ? `<p class="mt-3 text-sm leading-6 text-slate-600">${ui.tunnelManualHint}</p>` : state?.status === 'error' ? `<button type="button" id="tunnel-retry-button" class="mt-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">${ui.tunnelRetry}</button>` : ''}`;
-  const button = document.getElementById('tunnel-apply-button');
-  if (button) {
-    button.disabled = mutationPending || tunnelApplying || state.status === 'applied';
-    button.addEventListener('click', applyTunnel);
-  }
-  document.getElementById('tunnel-retry-button')?.addEventListener('click', loadTunnelStatus);
+    ${state?.status === 'disabled' ? `<p class="mt-3 text-sm leading-6 text-slate-600">${ui.tunnelManualHint}</p>` : ''}
+    <button type="button" id="tunnel-refresh-button" class="mt-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${ui.refreshStatus}</button>`;
+  document.getElementById('tunnel-refresh-button').addEventListener('click', refreshPublicationStatus);
 }
 
 function renderExistingRules(state, open) {
-  const rules = Array.isArray(state.existing_rules) ? state.existing_rules : [];
-  const externalCount = rules.filter(rule => !rule.managed).length;
-  const count = ui.existingRulesCount.replace('{count}', String(rules.length)).replace('{external}', String(externalCount));
-  const content = state.existing_rules_error
-    ? `<p class="mt-3 break-words text-sm text-red-700">${escapeHtml(state.existing_rules_error)}</p>`
-    : `<p class="mt-3 text-xs leading-5 text-slate-500">${state.current_verified ? ui.configurationVerified : ui.configurationUnverified}</p>${rules.length ? `<ul id="existing-tunnel-rule-list" class="mt-3 grid gap-2">${rules.map(rule => `<li data-managed="${Boolean(rule.managed)}" class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><div class="flex flex-wrap items-start justify-between gap-2"><span class="min-w-0 break-all font-mono text-xs font-medium text-slate-800">${escapeHtml(rule.hostname || ui.catchAllRule)}</span><span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${rule.managed ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}">${rule.managed ? ui.gateManaged : ui.externallyMaintained}</span></div>${rule.path ? `<p class="mt-1 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}<p class="mt-1 break-all font-mono text-xs leading-5 text-slate-700">→ ${escapeHtml(rule.service)}</p></li>`).join('')}</ul>` : `<p class="mt-3 text-sm text-slate-500">${ui.noExistingRules}</p>`}<p class="mt-3 text-xs leading-5 text-slate-500">${ui.externalRulesReadOnly}</p>`;
-  return `<details id="existing-tunnel-rules" class="mt-3 border-t border-slate-200 pt-3"${open ? ' open' : ''}><summary class="cursor-pointer rounded text-sm font-medium text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-sky-500">${ui.existingRulesTitle}<span class="ml-2 text-xs font-normal text-slate-500">${escapeHtml(count)}</span></summary>${content}</details>`;
+  const inventories = Array.isArray(state.inventories) ? state.inventories : [];
+  const rules = inventories.flatMap(inventory => inventory.existing_rules || []);
+  const count = ui.existingRulesCount.replace('{count}', String(rules.length)).replace('{external}', String(rules.filter(rule => !rule.managed).length));
+  const groups = inventories.map(inventory => {
+    const title = inventory.kind === 'management' ? ui.managementTunnel : ui.forwardingTunnel;
+    const entries = Array.isArray(inventory.existing_rules) ? inventory.existing_rules : [];
+    const content = inventory.existing_rules_error
+      ? `<p class="mt-2 break-words text-sm text-red-700">${escapeHtml(inventory.existing_rules_error)}</p>`
+      : `<p class="mt-2 text-xs leading-5 text-slate-500">${inventory.current_verified ? ui.configurationVerified : ui.configurationUnverified}</p>${entries.length ? `<ul class="existing-tunnel-rule-list mt-3 grid gap-2">${entries.map(rule => `<li data-managed="${Boolean(rule.managed && !inventory.read_only)}" class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><div class="flex flex-wrap items-start justify-between gap-2"><span class="min-w-0 break-all font-mono text-xs font-medium text-slate-800">${escapeHtml(rule.hostname || ui.catchAllRule)}</span><span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${rule.managed && !inventory.read_only ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}">${rule.managed && !inventory.read_only ? ui.gateManaged : ui.externallyMaintained}</span></div>${rule.path ? `<p class="mt-1 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}<p class="mt-1 break-all font-mono text-xs leading-5 text-slate-700">→ ${escapeHtml(rule.service)}</p></li>`).join('')}</ul>` : `<p class="mt-2 text-sm text-slate-500">${ui.noExistingRules}</p>`}`;
+    return `<section data-inventory-kind="${inventory.kind === 'management' ? 'management' : 'forwarding'}" class="min-w-0 border-t border-slate-200 pt-3"><h4 class="flex flex-wrap items-baseline gap-2 text-sm font-semibold text-slate-800">${title}${inventory.label ? `<span class="break-all text-xs font-normal text-slate-500">${escapeHtml(inventory.label)}</span>` : ''}</h4>${content}</section>`;
+  }).join('');
+  return `<details id="existing-tunnel-rules" class="mt-3 border-t border-slate-200 pt-3"${open ? ' open' : ''}><summary class="cursor-pointer rounded text-sm font-medium text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-sky-500">${ui.existingRulesTitle}<span class="ml-2 text-xs font-normal text-slate-500">${escapeHtml(count)}</span></summary><div class="mt-3 grid gap-4">${groups || `<p class="text-sm text-slate-500">${ui.tunnelLoadFailed}</p>`}</div><p class="mt-3 text-xs leading-5 text-slate-500">${ui.externalRulesReadOnly}</p></details>`;
 }
 
 async function loadTunnelStatus() {
@@ -218,34 +225,76 @@ async function loadTunnelStatus() {
   renderTunnelStatus();
 }
 
-async function applyTunnel() {
-  if (mutationPending || tunnelApplying || !tunnelState?.enabled || !confirm(ui.tunnelApplyConfirm)) return;
-  tunnelApplying = true;
-  setMutationPending(true);
+function acceptPublication(data) {
+  if (Array.isArray(data.routes)) routes.splice(0, routes.length, ...data.routes);
+  if (data.tunnel && typeof data.tunnel.enabled === 'boolean') tunnelState = data.tunnel;
+  renderRoutes();
   renderTunnelStatus();
-  try {
-    const response = await fetch('/api/tunnel/apply', { method: 'POST' });
-    const data = await response.json();
-    if (!response.ok || data.error) throw new Error(data.error || ui.tunnelApplyFailed);
-    showRouteMessage(ui.tunnelApplySuccess);
-  } catch (error) { showRouteMessage(error.message || ui.tunnelApplyFailed, true); }
-  finally {
-    tunnelApplying = false;
-    await loadTunnelStatus();
-    await refreshRoutes();
-    setMutationPending(false);
-  }
+  setMutationPending(mutationPending);
 }
 
-async function refreshRoutes() {
+async function readPublication() {
+  const [routeResponse, tunnelResponse] = await Promise.all([fetch('/api/routes', { cache: 'no-store' }), fetch('/api/tunnel', { cache: 'no-store' })]);
+  if (routeResponse.status === 401 || tunnelResponse.status === 401) throw new Error(ui.relogin);
+  if (!routeResponse.ok || !tunnelResponse.ok) throw new Error(ui.routeLoadFailed);
+  const [routeData, tunnelData] = await Promise.all([routeResponse.json(), tunnelResponse.json()]);
+  if (!Array.isArray(routeData) || typeof tunnelData.enabled !== 'boolean') throw new Error(ui.routeLoadFailed);
+  acceptPublication({ routes: routeData, tunnel: tunnelData });
+}
+
+async function readOperation(id) {
+  const response = await fetch(`/api/operations/${encodeURIComponent(id)}`, { cache: 'no-store' });
+  if (response.status === 401) throw new Error(ui.relogin);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(ui.syncUnconfirmed);
+  const data = await response.json();
+  return data.operation?.id === id ? data.operation : null;
+}
+
+function checkOperation(operation) {
+  if (operation?.status === 'applied' && operation.current === true) return;
+  const message = !operation ? ui.syncUnconfirmed
+    : operation.status === 'local_only' ? ui.syncLocalOnly
+    : operation.status === 'rolled_back' ? ui.syncRolledBack
+    : operation.status === 'applied' && operation.current !== true ? ui.syncSuperseded
+    : operation.error || ui.syncUnconfirmed;
+  throw Object.assign(new Error(message), { operation });
+}
+
+async function recoverOperation(id, complete, snapshot) {
+  showRouteMessage(ui.syncChecking);
+  for (const delay of [0, 500, 1000, 2000, 3000, 3000]) {
+    if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+    let operation;
+    try { operation = await readOperation(id); } catch { continue; }
+    if (!operation || ['queued', 'running'].includes(operation.status)) continue;
+    try { await readPublication(); } catch {
+      unconfirmedOperation = { id, complete, snapshot };
+      throw new Error(ui.syncUnconfirmed);
+    }
+    if (operation.status === 'unknown') unconfirmedOperation = { id, complete, snapshot };
+    checkOperation(operation);
+    return;
+  }
+  unconfirmedOperation = { id, complete, snapshot };
+  throw new Error(ui.syncUnconfirmed);
+}
+
+async function refreshPublicationStatus() {
+  const button = document.getElementById('tunnel-refresh-button');
+  button.disabled = true;
+  const pending = unconfirmedOperation;
   try {
-    const response = await fetch('/api/routes');
-    if (!response.ok) throw new Error(ui.routeLoadFailed);
-    const data = await response.json();
-    if (!Array.isArray(data)) throw new Error(ui.routeLoadFailed);
-    routes.splice(0, routes.length, ...data);
-    renderRoutes();
-  } catch (error) { showRouteMessage(error.message || ui.routeLoadFailed, true); }
+    await readPublication();
+    if (pending) {
+      const operation = await readOperation(pending.id);
+      if (!operation || ['queued', 'running', 'unknown'].includes(operation.status)) throw new Error(ui.syncUnconfirmed);
+      unconfirmedOperation = null;
+      checkOperation(operation);
+      pending.complete();
+    }
+  } catch (error) { showMutationFailure(error, pending?.snapshot); }
+  finally { setMutationPending(Boolean(unconfirmedOperation)); }
 }
 
 function escapeHtml(value) {
@@ -258,33 +307,94 @@ function formRouteType() { return selectedMode() === 'tcp-direct' ? 'tcp' : 'htt
 function routeType(route) { return route.type === 'tcp' ? 'tcp' : 'http'; }
 function routeName(route) { return `${route.subdomain}.${baseDomain}`; }
 
-function showRouteMessage(message, error = false) {
+function showRouteMessage(message, error = false, action) {
   const box = document.createElement('div');
   box.className = error
     ? 'rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
     : 'rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100';
   box.textContent = message;
+  if (action) {
+    const button = document.createElement('button');
+    button.id = 'mutation-recovery-button';
+    button.type = 'button';
+    button.className = 'mt-3 block rounded-xl border border-current px-3 py-2 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400';
+    button.textContent = action.label;
+    button.addEventListener('click', action.run);
+    box.appendChild(button);
+  }
   document.getElementById('form-msg').replaceChildren(box);
   if (error) box.scrollIntoView({ block: 'nearest' });
 }
 
-async function mutateRoute(url, options) {
-  const response = await fetch(url, options);
-  if (response.status === 401) throw new Error(ui.relogin);
-  const data = await response.json();
-  if (!response.ok || data.error) throw new Error(data.error || ui.routeRequestFailed);
-  if (!Array.isArray(data.routes)) throw new Error(ui.routeRequestFailed);
-  routes.splice(0, routes.length, ...data.routes);
-  renderRoutes();
-  setMutationPending(mutationPending);
+function clearFailedMutation() {
+  failedMutation = null;
+  if (!unconfirmedOperation) document.getElementById('mutation-recovery-button')?.remove();
+}
+
+function showMutationFailure(error, snapshot) {
+  const retryable = error.operation?.status === 'rolled_back' && error.operation.rollback_confirmed === true && snapshot;
+  if (retryable) {
+    failedMutation = snapshot;
+    document.getElementById('route-cancel-button').classList.remove('hidden');
+    showRouteMessage(ui.syncRolledBack, true, { label: ui.retryOperation, run: () => {
+      if (!failedMutation || mutationPending) return;
+      const retry = failedMutation;
+      mutateRoute(retry.url, retry.options, retry.successMessage, retry.onSuccess);
+    } });
+  } else if (unconfirmedOperation) {
+    showRouteMessage(ui.syncUnconfirmed, true, { label: ui.verifyOperation, run: refreshPublicationStatus });
+  } else { showRouteMessage(error.message || ui.routeRequestFailed, true); }
+}
+
+async function mutateRoute(url, options, successMessage, onSuccess = () => {}) {
+  const id = crypto.randomUUID();
+  const snapshot = { url, options, successMessage, onSuccess };
+  clearFailedMutation();
+  const complete = () => { clearFailedMutation(); onSuccess(); showRouteMessage(successMessage); };
+  setMutationPending(true);
+  renderTunnelStatus();
+  setMutationPending(true);
+  showRouteMessage(ui.routeSyncing);
+  try {
+    let response, data;
+    try {
+      response = await fetch(url, { ...options, headers: { ...options.headers, 'X-Flux-Gate-Operation': id } });
+      data = await response.json();
+    } catch {
+      await recoverOperation(id, complete, snapshot);
+      complete();
+      return;
+    }
+    if (response.status >= 500 && !data.operation) {
+      await recoverOperation(id, complete, snapshot);
+      complete();
+      return;
+    }
+    acceptPublication(data);
+    if (response.status === 401) throw new Error(ui.relogin);
+    if (!response.ok || data.error) {
+      if (data.operation?.status === 'unknown') unconfirmedOperation = { id, complete, snapshot };
+      throw Object.assign(new Error(data.error || ui.routeRequestFailed), { operation: data.operation });
+    }
+    if (data.operation?.id !== id) throw new Error(ui.syncUnconfirmed);
+    checkOperation(data.operation);
+    complete();
+  } catch (error) { showMutationFailure(error, snapshot); }
+  finally {
+    setMutationPending(Boolean(unconfirmedOperation));
+    renderTunnelStatus();
+  }
 }
 
 function setMutationPending(pending) {
   mutationPending = pending;
   document.querySelectorAll('#route-list button, #route-submit-button, #route-cancel-button').forEach(button => { button.disabled = pending; });
-  document.getElementById('route-submit-button').setAttribute('aria-busy', String(pending));
-  const tunnelButton = document.getElementById('tunnel-apply-button');
-  if (tunnelButton) tunnelButton.disabled = pending || tunnelApplying || tunnelState?.status === 'applied';
+  const submit = document.getElementById('route-submit-button');
+  document.querySelector('form').inert = pending;
+  submit.setAttribute('aria-busy', String(pending));
+  submit.textContent = pending ? ui.routeSaving : document.getElementById('f-original-subdomain').value ? ui.update : ui.add;
+  const refresh = document.getElementById('tunnel-refresh-button');
+  if (refresh) refresh.disabled = pending && !unconfirmedOperation;
 }
 
 function toggleRouteTypeFields() {
@@ -408,6 +518,7 @@ function renderRoutes() {
 }
 
 function resetRouteForm() {
+  clearFailedMutation();
   document.getElementById('f-mode-protected').checked = true;
   document.getElementById('f-original-subdomain').value = '';
   document.getElementById('f-sub').value = '';
@@ -428,6 +539,7 @@ function resetRouteForm() {
 
 function editRoute(subdomain) {
   if (mutationPending) return;
+  clearFailedMutation();
   const route = routes.find((item) => item.subdomain === subdomain);
   if (!route) return;
 
@@ -480,43 +592,27 @@ async function saveRoute(e) {
     }
     input.no_password = authMode === 'none';
   }
-  setMutationPending(true);
-  try {
-    await mutateRoute('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
-    resetRouteForm();
-    showRouteMessage(originalSubdomain ? ui.routeSavedUpdated : ui.routeSavedAdded);
-    await loadTunnelStatus();
-  } catch (error) { showRouteMessage(error.message || ui.routeRequestFailed, true); }
-  finally { setMutationPending(false); }
+  await mutateRoute('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }, originalSubdomain ? ui.routeSavedUpdated : ui.routeSavedAdded, resetRouteForm);
 }
 
 async function toggleRouteDisabled(subdomain) {
   if (mutationPending) return;
   const route = routes.find(item => item.subdomain === subdomain);
   if (!route || (!route.disabled && !confirm(ui.disableConfirm.replace('{route}', routeName(route))))) return;
-  setMutationPending(true);
-  try {
-    await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disabled: !route.disabled }) });
-    showRouteMessage(ui.routeSavedUpdated);
-    await loadTunnelStatus();
-  } catch (error) { showRouteMessage(error.message || ui.routeRequestFailed, true); }
-  finally { setMutationPending(false); }
+  await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disabled: !route.disabled }) }, ui.routeSavedUpdated);
 }
 
 async function deleteRoute(subdomain) {
   if (mutationPending) return;
   const route = routes.find(item => item.subdomain === subdomain);
   if (!route || !confirm(ui.deleteConfirm.replace('{route}', routeName(route)))) return;
-  setMutationPending(true);
-  try {
-    await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'DELETE' });
+  await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'DELETE' }, ui.routeDeleted, () => {
     if (document.getElementById('f-original-subdomain').value === subdomain) resetRouteForm();
-    showRouteMessage(ui.routeDeleted);
-    await loadTunnelStatus();
-  } catch (error) { showRouteMessage(error.message || ui.routeRequestFailed, true); }
-  finally { setMutationPending(false); }
+  });
 }
 
+document.querySelector('form').addEventListener('input', clearFailedMutation);
+document.querySelector('form').addEventListener('change', clearFailedMutation);
 document.getElementById('route-list').addEventListener('click', event => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;

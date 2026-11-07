@@ -132,3 +132,34 @@ test('overlapping unmanaged hostnames, concurrent publish and external configura
   await assert.rejects(first, /changed concurrently/);
   assert.ok(fs.readFileSync(file, 'utf8').endsWith('# external change\n'));
 });
+
+test('management inventories are read-only while publication changes only the business file and process', async (t) => {
+  const { dir, file, original, config, tunnel } = fixture(t);
+  const management = path.join(dir, 'management.yml'); fs.writeFileSync(management, original);
+  config.tunnel.inventory_files = [{ label: 'Management access', config_file: management }];
+  config.tunnel.process_name = 'forwarding-tunnel';
+  const calls = [];
+  t.mock.method(childProcess, 'execFile', (command, args, options, callback) => { calls.push({ command, args }); queueMicrotask(() => callback(null)); });
+  const result = await tunnel.apply();
+  assert.equal(result.inventories.length, 2);
+  assert.equal(result.inventories[0].kind, 'forwarding'); assert.equal(result.inventories[0].read_only, false);
+  assert.equal(result.inventories[1].kind, 'management'); assert.equal(result.inventories[1].read_only, true);
+  assert.equal(result.inventories[1].label, 'Management access'); assert.ok(result.inventories[1].existing_rules.every((entry) => entry.managed === false));
+  assert.equal(fs.readFileSync(management, 'utf8'), original);
+  assert.equal(fs.existsSync(management + '.flux-gate.lock'), false); assert.equal(fs.existsSync(management + '.flux-gate-applied.json'), false);
+  assert.deepEqual(calls.filter((call) => call.command === 'pm2'), [{ command: 'pm2', args: ['restart', 'forwarding-tunnel'] }]);
+  assert.notEqual(fs.readFileSync(file, 'utf8'), original);
+});
+
+test('primary config aliases and hard links to a read-only management file are rejected before any publish', async (t) => {
+  const { dir, file, original, config, tunnel } = fixture(t);
+  const symlink = path.join(dir, 'alias.yml'), hardlink = path.join(dir, 'hardlink.yml');
+  fs.symlinkSync(file, symlink); fs.linkSync(file, hardlink);
+  t.mock.method(childProcess, 'execFile', () => { throw new Error('No commands may run for a read-only target'); });
+  for (const readonly of [file, symlink, hardlink]) {
+    config.tunnel.inventory_files = [{ label: 'Management access', config_file: readonly }];
+    await assert.rejects(tunnel.apply(), /same file as a read-only/);
+    assert.equal(fs.readFileSync(file, 'utf8'), original);
+    assert.equal(fs.existsSync(file + '.flux-gate.lock'), false);
+  }
+});

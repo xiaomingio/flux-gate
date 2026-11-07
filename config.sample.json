@@ -27,6 +27,14 @@
     }
   ],
   "tunnel": {
-    "enabled": false
+    "enabled": false,
+    "config_file": "/absolute/path/to/forwarding.yml",
+    "process_name": "forwarding-tunnel",
+    "inventory_files": [
+      {
+        "label": "Management access",
+        "config_file": "/absolute/path/to/management.yml"
+      }
+    ]
   }
 }

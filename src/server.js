@@ -180,12 +180,15 @@ function createApp(options = {}) {
   const { configFile = DEFAULT_CONFIG_FILE } = options;
   const store = createConfigStore(configFile);
   const { loadConfig, saveConfig } = store;
-  const runtime = new RouteConfig(store);
   const tunnel = new TunnelConfig(store);
+  const runtime = new RouteConfig(store, tunnel);
   const serialized = (config) => {
     const status = tunnel.status();
     return (config.routes || []).map((route) => sanitizeRoute(route, config, status));
   };
+  const mutationError = (res, error) => res.status(error.status || 500).json({ error: error.message,
+    operation: error.operationId ? runtime.operation(error.operationId) : null,
+    routes: serialized(loadConfig()), tunnel: tunnel.status() });
 
   const app = express();
   app.set('view engine', 'ejs');
@@ -324,6 +327,11 @@ function createApp(options = {}) {
   });
 
   app.get('/api/tunnel', (req, res) => res.json(tunnel.status()));
+  app.get('/api/operations/:id', (req, res) => {
+    const operation = runtime.operation(req.params.id);
+    if (!operation) return res.status(404).json({ error: 'Operation receipt not found; the write was not repeated' });
+    res.json({ operation });
+  });
   app.post('/api/tunnel/apply', async (req, res) => {
     if (!req.headers.origin) return res.status(403).json({ error: 'Origin required to apply Tunnel changes' });
     try { res.json(await tunnel.apply()); }
@@ -340,7 +348,7 @@ function createApp(options = {}) {
       }
       const type = req.body.type || 'http';
       if (!['http', 'tcp'].includes(type)) return res.status(400).json({ error: 'Unknown route type' });
-      const cfg = await runtime.mutate((config) => {
+      const result = await runtime.mutate((config) => {
         const originalSub = String(original_subdomain || cleanSub).toLowerCase();
         const idx = config.routes.findIndex((route) => route.subdomain === originalSub);
         if (original_subdomain && idx < 0) throw Object.assign(new Error('Original route no longer exists'), { status: 404 });
@@ -372,29 +380,29 @@ function createApp(options = {}) {
         entry.port = Number(port);
         if (idx >= 0) config.routes[idx] = entry;
         else config.routes.push(entry);
-      });
-      res.json({ ok: true, routes: serialized(cfg) });
-    } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+      }, req.get('X-Flux-Gate-Operation'));
+      res.json({ ok: true, routes: serialized(result.config), operation: result.operation, tunnel: result.tunnel });
+    } catch (error) { mutationError(res, error); }
   });
 
   app.patch('/api/routes/:subdomain', async (req, res) => {
     try {
-      const cfg = await runtime.mutate((config) => {
+      const result = await runtime.mutate((config) => {
         const route = config.routes.find((entry) => entry.subdomain === req.params.subdomain);
         if (!route) throw Object.assign(new Error('Route not found'), { status: 404 });
         route.disabled = normalizeBoolean(req.body.disabled);
-      });
-      res.json({ ok: true, routes: serialized(cfg) });
-    } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+      }, req.get('X-Flux-Gate-Operation'));
+      res.json({ ok: true, routes: serialized(result.config), operation: result.operation, tunnel: result.tunnel });
+    } catch (error) { mutationError(res, error); }
   });
 
   app.delete('/api/routes/:subdomain', async (req, res) => {
     try {
-      const cfg = await runtime.mutate((config) => {
+      const result = await runtime.mutate((config) => {
         config.routes = config.routes.filter((route) => route.subdomain !== req.params.subdomain);
-      });
-      res.json({ ok: true, routes: serialized(cfg) });
-    } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+      }, req.get('X-Flux-Gate-Operation'));
+      res.json({ ok: true, routes: serialized(result.config), operation: result.operation, tunnel: result.tunnel });
+    } catch (error) { mutationError(res, error); }
   });
 
   const upgraded = new Set();

@@ -13,6 +13,7 @@ npm-debug.log*
 # Config (copy config.sample.json to config.json and customize)
 config.json
 config.json.*.tmp
+config.json.flux-gate-operations.json
 
 # OS
 .DS_Store
