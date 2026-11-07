@@ -104,114 +104,6 @@ test('GET / renders Flux Gate branding and dashboard hero in Chinese', async () 
 
     assert.match(html, /Flux Gate/);
     assert.match(html, /一站式内网服务发布面板/);
-    assert.match(html, /rounded-3xl/);
-  });
-});
-
-test('GET / renders route title as the clickable link and uses icon-only delete control', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
-    const response = await fetch(baseUrl, {
-      headers: {
-        Authorization: authHeader,
-      },
-    });
-
-    assert.equal(response.status, 200);
-    const html = await response.text();
-
-    assert.match(html, /group-hover:text-sky-600/);
-    assert.doesNotMatch(html, />\s*🔗\s*(Open|访问)\s*</);
-    assert.doesNotMatch(html, /🗑️\s*(Delete|删除)/);
-  });
-});
-
-test('GET / renders red auth badge for no-password routes', async () => {
-  const zh = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'locales', 'zh.json'), 'utf8'));
-
-  await withServer(async ({ baseUrl, authHeader }) => {
-    const response = await fetch(baseUrl, {
-      headers: {
-        Authorization: authHeader,
-      },
-    });
-
-    assert.equal(response.status, 200);
-    const html = await response.text();
-
-    assert.match(html, /border-red-200 bg-red-50 text-red-700/);
-    assert.match(html, new RegExp(zh.authNoneLabel));
-    assert.match(html, new RegExp(zh.authDefaultLabel));
-  }, {
-    routes: [
-      {
-        subdomain: 'public',
-        ip: '192.168.1.99',
-        port: '8081',
-        description: 'Public route',
-        no_password: true,
-      },
-    ],
-  });
-});
-
-test('GET / renders route status and auth badges with unified chip style', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
-    const response = await fetch(baseUrl, {
-      headers: {
-        Authorization: authHeader,
-      },
-    });
-
-    assert.equal(response.status, 200);
-    const html = await response.text();
-
-    assert.match(html, /rounded-full border px-2\.5 py-1/);
-    assert.match(html, /在线|已停用|无密码|自定义/);
-  }, {
-    routes: [
-      { subdomain: 'custom', ip: '192.168.1.10', port: '3000', description: 'Custom auth', username: 'alice', password_hash: hashPassword('secret') },
-      { subdomain: 'public', ip: '192.168.1.11', port: '3001', description: 'Public', no_password: true },
-      { subdomain: 'off', ip: '192.168.1.12', port: '3002', description: 'Off', disabled: true },
-    ],
-  });
-});
-
-test('GET / renders auth mode options and custom inputs are conditional', async () => {
-  const zh = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'locales', 'zh.json'), 'utf8'));
-
-  await withServer(async ({ baseUrl, authHeader }) => {
-    const response = await fetch(baseUrl, {
-      headers: {
-        Authorization: authHeader,
-      },
-    });
-
-    assert.equal(response.status, 200);
-    const html = await response.text();
-
-    assert.match(html, new RegExp(zh.authDefaultLabel));
-    assert.match(html, new RegExp(zh.authCustomLabel));
-    assert.match(html, new RegExp(zh.authNoneLabel));
-    assert.match(html, /<form class="grid min-w-0 gap-4" onsubmit="saveRoute\(event\)">/);
-    assert.match(html, /class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900\/70/);
-    assert.match(html, /class="inline-flex shrink-0 items-center border-l border-slate-700 bg-slate-900 px-4 text-sm font-medium text-slate-400"/);
-    assert.match(html, /w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900\/70/);
-  });
-});
-
-test('GET \/ shows the full subdomain with base domain suffix in the input group', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
-    const response = await fetch(baseUrl, {
-      headers: {
-        Authorization: authHeader,
-      },
-    });
-
-    assert.equal(response.status, 200);
-    const html = await response.text();
-
-    assert.match(html, /id="f-sub"/);
-    assert.match(html, />\.example\.com<\/span>/);
   });
 });
 
@@ -247,7 +139,6 @@ test('GET / renders English auth labels when locale cookie is present', async ()
     assert.match(html, /Authentication/);
     assert.match(html, /Default credentials/);
     assert.match(html, /Custom/);
-    assert.match(html, /No password/);
   });
 });
 
@@ -315,7 +206,7 @@ test('subdomain route can use its own username and password', async () => {
   });
 });
 
-test('subdomain route can disable password and disabled routes are not available', async () => {
+test('direct and disabled routes are not proxied by Gate', async () => {
   await withServer(async ({ baseUrl }) => {
     const noPasswordRoute = await fetch(`${baseUrl}/`, {
       headers: {
@@ -323,7 +214,7 @@ test('subdomain route can disable password and disabled routes are not available
       },
       redirect: 'manual',
     });
-    assert.equal(noPasswordRoute.status, 502);
+    assert.equal(noPasswordRoute.status, 404);
 
     const disabledRoute = await fetch(`${baseUrl}/`, {
       headers: {
@@ -347,36 +238,6 @@ test('subdomain route can disable password and disabled routes are not available
         ip: '127.0.0.1',
         port: '65535',
         description: 'Off',
-        disabled: true,
-      },
-    ],
-  });
-});
-
-test('GET / renders edit and disable controls for route cards', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
-    const response = await fetch(baseUrl, {
-      headers: {
-        Authorization: authHeader,
-      },
-    });
-
-    assert.equal(response.status, 200);
-    const html = await response.text();
-
-    assert.match(html, /username/);
-    assert.match(html, /no_password/);
-    assert.match(html, /flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start/);
-    assert.match(html, /w-full min-w-0 rounded-3xl border/);
-    assert.match(html, /grid min-w-0 gap-3 md:grid-cols-2/);
-    assert.match(html, /flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end sm:justify-start sm:self-start/);
-  }, {
-    routes: [
-      {
-        subdomain: 'workspace',
-        ip: '192.168.1.10',
-        port: '8888',
-        description: 'Workspace',
         disabled: true,
       },
     ],

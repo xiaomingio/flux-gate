@@ -75,79 +75,86 @@
           <input type="hidden" id="f-original-subdomain">
 
           <fieldset class="min-w-0">
-            <legend class="mb-2 block text-sm font-medium text-slate-200"><%= ui.routeType %></legend>
-            <input type="hidden" name="type" id="f-type" value="http">
-            <div class="flex gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 p-1.5">
+            <legend class="mb-2 block text-sm font-medium text-slate-200"><%= ui.routeMode %></legend>
+            <div class="flex gap-1.5 rounded-2xl border border-slate-700 bg-slate-900/70 p-1.5">
               <label class="min-w-0 flex-1 cursor-pointer">
-                <input type="radio" name="route_type" id="f-type-http" value="http" checked class="peer sr-only">
-                <span class="block rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400">HTTP</span>
+                <input type="radio" name="route_mode" id="f-mode-protected" value="protected" checked class="peer sr-only">
+                <span class="block rounded-xl px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">HTTP</span><span class="block text-xs"><%= ui.passwordProtection %></span></span>
               </label>
               <label class="min-w-0 flex-1 cursor-pointer">
-                <input type="radio" name="route_type" id="f-type-tcp" value="tcp" class="peer sr-only">
-                <span class="block rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400">TCP</span>
+                <input type="radio" name="route_mode" id="f-mode-http-direct" value="http-direct" class="peer sr-only">
+                <span class="block rounded-xl px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">HTTP</span><span class="block text-xs"><%= ui.directConnection %></span></span>
+              </label>
+              <label class="min-w-0 flex-1 cursor-pointer">
+                <input type="radio" name="route_mode" id="f-mode-tcp-direct" value="tcp-direct" class="peer sr-only">
+                <span class="block rounded-xl px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">TCP</span><span class="block text-xs"><%= ui.directConnection %></span></span>
               </label>
             </div>
           </fieldset>
-          <div class="min-w-0">
-            <label for="f-sub" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.subdomain %></label>
+          <div id="route-flow" class="grid min-w-0 gap-2">
+            <div class="min-w-0 rounded-2xl border border-slate-700 bg-slate-900/60 p-3">
+              <label for="f-sub" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.publicAddress %></label>
             <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
               <span id="f-sub-scheme" class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">https://</span>
               <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-0">
               <span class="inline-flex shrink-0 items-center border-l border-slate-700 bg-slate-900 px-4 text-sm font-medium text-slate-400">.<%= baseDomain %></span>
             </div>
-          </div>
-          <div id="tcp-fields" class="hidden min-w-0">
-            <label for="f-listen-port" class="mb-2 block text-sm font-medium leading-6 text-slate-200"><%= ui.tcpListenPort %> <span id="tcp-access-note" class="font-normal text-slate-400">（<%= ui.tcpAccessNote %>）</span></label>
-            <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
-              <span class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">tcp://127.0.0.1:</span>
-              <input name="listen_port" id="f-listen-port" type="number" min="1024" max="65535" step="1" placeholder="10022" disabled aria-describedby="tcp-access-note" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-0">
             </div>
-          </div>
-          <div class="min-w-0">
-            <div class="mb-2 grid grid-cols-[minmax(0,1fr)_5rem] gap-2 text-sm font-medium text-slate-200">
+            <div class="text-center text-slate-500" aria-hidden="true">↓</div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span class="font-medium">Cloudflare</span><span id="cloudflare-access-note" class="text-xs text-slate-400"><%= ui.cloudflareHttp %></span></div>
+            </div>
+            <div class="text-center text-slate-500" aria-hidden="true">↓</div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span class="font-medium">Cloudflare Tunnel</span><span class="text-xs text-slate-400"><%= ui.tunnelEncryption %></span></div>
+            </div>
+            <fieldset id="http-auth-fields" class="grid min-w-0 gap-2 text-sm text-slate-200">
+              <legend class="sr-only"><%= ui.passwordProtection %></legend>
+              <div class="text-center text-slate-500" aria-hidden="true">↓</div>
+              <div id="gate-node" class="grid min-w-0 gap-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 p-3">
+                <div class="flex flex-wrap items-center justify-between gap-2"><span class="font-medium">Gate</span><span class="rounded-full bg-sky-500/15 px-2 py-1 text-xs text-sky-200"><%= ui.passwordProtection %></span></div>
+                <div class="grid gap-3">
+                  <label class="flex items-start gap-3">
+                    <input type="radio" id="auth-mode-default" name="auth_mode" value="default" checked class="h-4 w-4 border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
+                    <span><%= ui.authDefaultFormLabel %></span>
+                  </label>
+                  <label class="flex items-start gap-3">
+                    <input type="radio" id="auth-mode-custom" name="auth_mode" value="custom" class="h-4 w-4 border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
+                    <span><%= ui.authCustomLabel %></span>
+                  </label>
+                </div>
+            <div id="custom-auth-fields" class="hidden grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="f-username" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.customUsername %></label>
+                <input name="username" id="f-username" autocomplete="off" disabled placeholder="alice" class="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+              </div>
+              <div>
+                <label for="f-password" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.customPassword %></label>
+                <input name="password" id="f-password" type="password" autocomplete="new-password" disabled placeholder="••••••••" class="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+              </div>
+            </div>
+              </div>
+            </fieldset>
+            <div class="text-center text-slate-500" aria-hidden="true">↓</div>
+            <div class="min-w-0 rounded-2xl border border-slate-700 bg-slate-900/60 p-3">
+              <p class="mb-2 text-sm font-medium"><%= ui.targetAddress %></p>
+            <div class="sr-only">
               <label for="f-ip"><%= ui.targetIp %></label>
               <label for="f-port"><%= ui.port %></label>
             </div>
             <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
               <span id="f-target-scheme" class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">http://</span>
-              <input name="ip" id="f-ip" placeholder="192.168.1.100" required aria-describedby="target-host-help" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400">
+              <input name="ip" id="f-ip" placeholder="<%= ui.targetHostPlaceholder %>" required class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400">
               <span class="inline-flex shrink-0 items-center border-x border-slate-700 px-2 text-slate-400" aria-hidden="true">:</span>
               <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400">
             </div>
-            <p id="target-host-help" class="mt-2 text-xs text-slate-400"><%= ui.targetHostHint %></p>
+            </div>
           </div>
           <div class="min-w-0">
             <label for="f-desc" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.descriptionOptional %></label>
-            <input name="description" id="f-desc" placeholder="<%= ui.descriptionPlaceholder %>" class="w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+            <input name="description" id="f-desc" placeholder="<%= ui.descriptionPlaceholder %>" class="w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
           </div>
-          <fieldset id="http-auth-fields" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-200">
-            <p class="mb-3 font-medium text-slate-100"><%= ui.authSectionTitle %></p>
-            <div class="grid gap-3">
-              <label class="flex items-start gap-3">
-                <input type="radio" id="auth-mode-default" name="auth_mode" value="default" checked class="h-4 w-4 border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
-                <span><%= ui.authDefaultFormLabel %></span>
-              </label>
-              <label class="flex items-start gap-3">
-                <input type="radio" id="auth-mode-custom" name="auth_mode" value="custom" class="h-4 w-4 border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
-                <span><%= ui.authCustomLabel %></span>
-              </label>
-              <label class="flex items-start gap-3">
-                <input type="radio" id="auth-mode-none" name="auth_mode" value="none" class="h-4 w-4 border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
-                <span><%= ui.authNoneLabel %></span>
-              </label>
-            </div>
-            <div id="custom-auth-fields" class="hidden mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <label for="f-username" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.customUsername %></label>
-                <input name="username" id="f-username" placeholder="alice" class="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
-              </div>
-              <div>
-                <label for="f-password" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.customPassword %></label>
-                <input name="password" id="f-password" type="password" placeholder="••••••••" class="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
-              </div>
-            </div>
-            <p id="no-password-warning" class="hidden mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300"><%= ui.noPasswordWarning %></p>
-          </fieldset>
+          <p id="no-password-warning" role="note" class="hidden rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300"><%= ui.noPasswordWarning %></p>
           <p id="tcp-security-warning" role="note" class="hidden rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300"><%= ui.tcpSecurityWarning %></p>
           <label class="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">
             <input type="checkbox" id="f-enabled" name="enabled" checked class="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
@@ -177,7 +184,7 @@ function renderTunnelStatus() {
   const state = tunnelState;
   const status = !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
   panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="font-semibold text-slate-900">${ui.tunnelTitle}</h3><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : 'text-slate-600'}">${status}</span></div>
-    ${state?.rules?.length ? `<ul class="mt-3 grid gap-2 text-xs text-slate-700">${state.rules.map(rule => `<li class="break-all font-mono">${escapeHtml(rule.hostname)} → ${escapeHtml(rule.service)}</li>`).join('')}</ul>` : ''}
+    ${state?.changes?.length ? `<ul class="mt-3 grid gap-3 text-xs text-slate-700">${state.changes.filter(change => change.status !== 'applied' && change.status !== 'disabled').map(change => `<li class="grid gap-1 border-t border-slate-200 pt-2"><span class="break-all font-medium">${escapeHtml(change.hostname)}</span><span class="break-all">${ui.currentPath}: ${escapeHtml(state.current_verified ? change.current_service || pathLabel(change.current_path) : ui.currentUnknown)}</span><span class="break-all text-amber-800">${ui.desiredPath}: ${escapeHtml(change.desired_service || pathLabel(change.desired_path))}</span></li>`).join('')}</ul>` : ''}
     ${state?.error ? `<p class="mt-3 break-words text-sm text-red-700">${escapeHtml(state.error)}</p>` : ''}
     ${state?.enabled ? `<button type="button" id="tunnel-apply-button" class="mt-3 cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${tunnelApplying ? ui.tunnelApplying : ui.tunnelApply}</button>` : state?.status === 'disabled' ? `<p class="mt-3 text-sm leading-6 text-slate-600">${ui.tunnelManualHint}</p>` : state?.status === 'error' ? `<button type="button" id="tunnel-retry-button" class="mt-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">${ui.tunnelRetry}</button>` : ''}`;
   const button = document.getElementById('tunnel-apply-button');
@@ -213,13 +220,28 @@ async function applyTunnel() {
   finally {
     tunnelApplying = false;
     await loadTunnelStatus();
+    await refreshRoutes();
     setMutationPending(false);
   }
+}
+
+async function refreshRoutes() {
+  try {
+    const response = await fetch('/api/routes');
+    if (!response.ok) throw new Error(ui.routeLoadFailed);
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error(ui.routeLoadFailed);
+    routes.splice(0, routes.length, ...data);
+    renderRoutes();
+  } catch (error) { showRouteMessage(error.message || ui.routeLoadFailed, true); }
 }
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 }
+
+function selectedMode() { return document.querySelector('input[name="route_mode"]:checked').value; }
+function formRouteType() { return selectedMode() === 'tcp-direct' ? 'tcp' : 'http'; }
 
 function routeType(route) { return route.type === 'tcp' ? 'tcp' : 'http'; }
 function routeName(route) { return `${route.subdomain}.${baseDomain}`; }
@@ -254,18 +276,15 @@ function setMutationPending(pending) {
 }
 
 function toggleRouteTypeFields() {
-  const tcp = document.getElementById('f-type').value === 'tcp';
-  document.getElementById('f-type-http').checked = !tcp;
-  document.getElementById('f-type-tcp').checked = tcp;
+  const tcp = formRouteType() === 'tcp';
   document.getElementById('f-sub-scheme').textContent = tcp ? 'tcp://' : 'https://';
   document.getElementById('f-sub').placeholder = tcp ? 'ssh' : 'nas';
   document.getElementById('f-target-scheme').textContent = tcp ? 'tcp://' : 'http://';
-  document.getElementById('tcp-fields').classList.toggle('hidden', !tcp);
-  document.getElementById('f-listen-port').disabled = !tcp;
-  document.getElementById('f-listen-port').required = tcp;
-  document.getElementById('http-auth-fields').classList.toggle('hidden', tcp);
-  document.getElementById('http-auth-fields').disabled = tcp;
-  document.getElementById('tcp-security-warning').classList.toggle('hidden', !tcp);
+  const protectedMode = selectedMode() === 'protected';
+  document.getElementById('http-auth-fields').classList.toggle('hidden', !protectedMode);
+  document.getElementById('http-auth-fields').disabled = !protectedMode;
+  document.getElementById('cloudflare-access-note').textContent = tcp ? ui.cloudflareTcp : ui.cloudflareHttp;
+  toggleAuthModeFields();
 }
 
 function updateRouteCount() {
@@ -277,49 +296,47 @@ function updateRouteCount() {
   if (enabledCountBadge) enabledCountBadge.textContent = ui.enabledRoutesCount.replace('{count}', String(enabledCount));
 }
 
-function renderAuthBadgeLabel(route) {
-  if (routeType(route) === 'tcp') return ui.tcpTargetAuth;
-  if (route.no_password) return ui.authNoneLabel;
-  if (route.has_custom_auth) {
-    if (route.username) {
-      return ui.authCustomWithUsernameLabel.replace('{username}', route.username);
-    }
-    return ui.authCustomLabel;
-  }
-  return ui.authDefaultLabel;
-}
-
 function getRouteStatusLabel(route) {
-  if (route.disabled) return ui.routeDisabledState;
-  if (routeType(route) === 'tcp') return ({ listening: ui.tcpListening, pending: ui.tcpPending, error: ui.tcpError })[route.listener_status] || ui.tcpPending;
-  return ui.routeEnabledState;
+  if (route.current_verified && route.current_path === 'blocked' && route.desired_path === 'blocked') return ui.routeDisabledState;
+  return ({ applied: ui.publicationApplied, pending: ui.tunnelPending, disabled: ui.tunnelManual, error: ui.tunnelError })[route.publication_status] || ui.currentUnknown;
 }
 
 function getRouteStatusClass(route) {
-  if (!route.disabled && routeType(route) === 'tcp' && route.listener_status !== 'listening') return 'border-amber-200 bg-amber-50 text-amber-700';
-  return route.disabled
-    ? 'border-slate-300 bg-slate-100 text-slate-600'
-    : 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (route.publication_status === 'pending') return 'border-amber-200 bg-amber-50 text-amber-700';
+  if (route.publication_status === 'error') return 'border-red-200 bg-red-50 text-red-700';
+  if (route.current_verified && route.current_path === 'blocked') return 'border-slate-300 bg-slate-100 text-slate-600';
+  return route.current_verified ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-slate-100 text-slate-600';
 }
 
-function getRouteAuthClass(route) {
-  if (routeType(route) === 'tcp') return 'border-slate-200 bg-slate-50 text-slate-600';
-  if (route.no_password) return 'border-red-200 bg-red-50 text-red-700';
-  if (route.has_custom_auth) return 'border-sky-200 bg-sky-50 text-sky-700';
-  return 'border-slate-200 bg-slate-50 text-slate-600';
+function pathLabel(path) {
+  return ({ gateway: ui.pathGateway, direct: ui.pathDirect, blocked: ui.pathBlocked, unmanaged: ui.pathUnmanaged, unknown: ui.currentUnknown })[path] || ui.currentUnknown;
 }
 
-function updateNoPasswordWarning() {
-  const warning = document.getElementById('no-password-warning');
-  if (!warning) return;
-  warning.classList.toggle('hidden', document.querySelector('input[name="auth_mode"]:checked')?.value !== 'none');
+function renderRoutePath(route) {
+  const current = route.current_verified ? route.current_path : 'unknown';
+  let chain = escapeHtml(pathLabel(current));
+  if (current === 'gateway' || current === 'direct') {
+    const gatewayActive = current === 'gateway' && route.desired_path === 'gateway';
+    const service = current === 'direct' ? route.current_service : gatewayActive ? route.target_service : ui.pathBlocked;
+    chain = `<span class="block text-xs text-slate-500">Cloudflare → Cloudflare Tunnel</span>${current === 'gateway' ? `<span class="block">↓ Gate${gatewayActive ? ` · ${escapeHtml(ui.passwordProtection)}` : ''}</span>` : ''}<span class="block break-all">↓ ${escapeHtml(service)}</span>`;
+  }
+  const pending = route.publication_status === 'pending' || route.publication_status === 'error';
+  if (current === 'unmanaged' && route.current_service) chain += `<span class="block break-all">${escapeHtml(route.current_service)}</span>`;
+  const desired = route.desired_path === 'blocked' ? ui.blockPublicAccess : `${pathLabel(route.desired_path)} → ${route.target_service}`;
+  return `<div class="grid gap-2"><div><p class="text-xs font-medium text-slate-500">${ui.currentPath}</p><div class="mt-1 break-all text-sm leading-6 text-slate-700">${chain}</div></div>${pending ? `<div class="border-t border-slate-200 pt-2 text-sm"><p class="text-xs font-medium text-amber-700">${ui.desiredPath}</p><p class="mt-1 break-all text-slate-700">${escapeHtml(desired)}</p>${current === 'direct' && route.desired_path === 'gateway' ? `<p class="mt-1 text-red-700">${ui.notProtectedYet}</p>` : ''}</div>` : ''}</div>`;
 }
 
 function toggleAuthModeFields() {
+  const tcp = formRouteType() === 'tcp';
   const mode = document.querySelector('input[name="auth_mode"]:checked')?.value || 'default';
-  const customFields = document.getElementById('custom-auth-fields');
-  if (customFields) customFields.classList.toggle('hidden', mode !== 'custom');
-  updateNoPasswordWarning();
+  document.getElementById('custom-auth-fields').classList.toggle('hidden', mode !== 'custom');
+  const custom = selectedMode() === 'protected' && mode === 'custom';
+  for (const id of ['f-username', 'f-password']) {
+    document.getElementById(id).required = custom;
+    document.getElementById(id).disabled = !custom;
+  }
+  document.getElementById('no-password-warning').classList.toggle('hidden', selectedMode() !== 'http-direct');
+  document.getElementById('tcp-security-warning').classList.toggle('hidden', !tcp);
 }
 
 function icon(name) {
@@ -354,10 +371,6 @@ function renderRoutes() {
     const title = r.disabled || tcp
       ? `<h3 class="break-all text-base font-semibold tracking-tight ${r.disabled ? 'text-slate-400' : 'text-slate-950'}">${source}</h3>`
       : `<a href="https://${name}" target="_blank" rel="noreferrer" class="mt-1 block group rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-sky-400/40"><h3 class="break-all text-base font-semibold tracking-tight text-slate-950 transition group-hover:text-sky-600">https://${name}</h3></a>`;
-    const targetHost = String(r.ip).includes(':') && !String(r.ip).startsWith('[') ? `[${r.ip}]` : r.ip;
-    const targetProtocol = tcp ? 'tcp' : 'http';
-    const target = `${escapeHtml(targetProtocol)}://${escapeHtml(targetHost)}:${escapeHtml(r.port)}`;
-    const connection = tcp ? `<span class="block">→ tcp://127.0.0.1:${escapeHtml(r.listen_port)}</span><span class="block">→ ${target}</span>` : `→ ${target}`;
 
     return `
       <article class="w-full min-w-0 rounded-3xl border ${r.disabled ? 'border-slate-200 bg-slate-100/80' : 'border-slate-200 bg-slate-50'} p-4 shadow-card transition hover:-translate-y-0.5 hover:bg-white sm:p-5">
@@ -369,11 +382,7 @@ function renderRoutes() {
               <span class="rounded-full border px-2.5 py-1 text-[11px] font-medium ${getRouteStatusClass(r)}">${getRouteStatusLabel(r)}</span>
             </div>
             <div class="mt-1">${title}</div>
-            <div class="mt-2 break-all rounded-2xl bg-white px-3 py-2 font-mono text-sm text-slate-700 shadow-sm">${connection}</div>
-            <div class="mt-2 flex flex-wrap gap-2 text-xs font-medium">
-              <span class="rounded-full border px-2.5 py-1 ${getRouteAuthClass(r)}">${escapeHtml(renderAuthBadgeLabel(r))}</span>
-            </div>
-            ${tcp ? `<details class="mt-2 text-sm text-slate-600"><summary class="cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${ui.tcpTunnelSettings}</summary><p class="mt-2 leading-6">${ui.tcpTunnelHint}</p></details>` : ''}
+            <div class="mt-2 rounded-2xl bg-white px-3 py-3 shadow-sm">${renderRoutePath(r)}</div>
             <p class="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">${escapeHtml(r.description || ui.noDescription)}</p>
           </div>
           <div class="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end sm:justify-start sm:self-start">
@@ -387,8 +396,7 @@ function renderRoutes() {
 }
 
 function resetRouteForm() {
-  document.getElementById('f-type').value = 'http';
-  document.getElementById('f-listen-port').value = '';
+  document.getElementById('f-mode-protected').checked = true;
   document.getElementById('f-original-subdomain').value = '';
   document.getElementById('f-sub').value = '';
   document.getElementById('f-ip').value = '';
@@ -412,16 +420,14 @@ function editRoute(subdomain) {
   if (!route) return;
 
   document.getElementById('f-original-subdomain').value = route.subdomain;
-  document.getElementById('f-type').value = routeType(route);
-  document.getElementById('f-listen-port').value = route.listen_port || '';
+  document.getElementById(routeType(route) === 'tcp' ? 'f-mode-tcp-direct' : route.no_password ? 'f-mode-http-direct' : 'f-mode-protected').checked = true;
   document.getElementById('f-sub').value = route.subdomain;
   document.getElementById('f-ip').value = route.ip;
   document.getElementById('f-port').value = route.port;
   document.getElementById('f-desc').value = route.description || '';
   document.getElementById('f-username').value = route.username || '';
   document.getElementById('f-password').value = '';
-  if (route.no_password) document.getElementById('auth-mode-none').checked = true;
-  else if (route.has_custom_auth) document.getElementById('auth-mode-custom').checked = true;
+  if (route.has_custom_auth) document.getElementById('auth-mode-custom').checked = true;
   else document.getElementById('auth-mode-default').checked = true;
   document.getElementById('f-enabled').checked = !Boolean(route.disabled);
   toggleAuthModeFields();
@@ -437,7 +443,7 @@ async function saveRoute(e) {
   e.preventDefault();
   if (mutationPending) return;
   const originalSubdomain = document.getElementById('f-original-subdomain').value.trim();
-  const type = document.getElementById('f-type').value;
+  const type = formRouteType();
   const disabled = !document.getElementById('f-enabled').checked;
   const previous = routes.find(route => route.subdomain === originalSubdomain);
   if (previous && !previous.disabled && disabled && !confirm(ui.disableConfirm.replace('{route}', routeName(previous)))) return;
@@ -450,13 +456,16 @@ async function saveRoute(e) {
     description: document.getElementById('f-desc').value.trim(),
     disabled,
   };
-  if (type === 'tcp') {
-    input.listen_port = Number(document.getElementById('f-listen-port').value);
-  }
-  else {
-    const authMode = document.querySelector('input[name="auth_mode"]:checked')?.value || 'default';
+  if (type === 'http') {
+    const authMode = selectedMode() === 'http-direct' ? 'none' : document.querySelector('input[name="auth_mode"]:checked')?.value || 'default';
+    input.auth_mode = authMode;
     input.username = authMode === 'custom' ? document.getElementById('f-username').value.trim() : '';
-    input.password = authMode === 'custom' ? document.getElementById('f-password').value : '';
+    input.password = authMode === 'custom' ? document.getElementById('f-password').value.trim() : '';
+    if (authMode === 'custom' && (!input.username || !input.password)) {
+      showRouteMessage(ui.customCredentialsRequired, true);
+      document.getElementById(!input.username ? 'f-username' : 'f-password').focus();
+      return;
+    }
     input.no_password = authMode === 'none';
   }
   setMutationPending(true);
@@ -501,10 +510,7 @@ document.getElementById('route-list').addEventListener('click', event => {
   if (!button) return;
   ({ edit: editRoute, toggle: toggleRouteDisabled, delete: deleteRoute })[button.dataset.action]?.(button.dataset.subdomain);
 });
-document.querySelectorAll('input[name="route_type"]').forEach(input => input.addEventListener('change', () => {
-  document.getElementById('f-type').value = input.value;
-  toggleRouteTypeFields();
-}));
+document.querySelectorAll('input[name="route_mode"]').forEach(input => input.addEventListener('change', toggleRouteTypeFields));
 
 renderRoutes();
 document.querySelectorAll('input[name="auth_mode"]').forEach((input) => {

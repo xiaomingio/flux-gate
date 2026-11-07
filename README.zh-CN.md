@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-一个轻量级自建 HTTP 网关，用来通过 Cloudflare Tunnel 把内网 Web 服务发布到公网，并提供简单的 Web 管理界面和基于子域名的路由能力。
+通过 Cloudflare Tunnel 发布 HTTP 与 TCP 服务的自建管理面板。需要为 HTTP 服务增加密码保护时，才经过 Flux Gate 网关。
 
 ![管理界面](assets/admin.png)
 
@@ -16,14 +16,22 @@ Flux Gate 可以帮你：
 - 支持给每个转发项单独设置用户名和密码或无密码
 - 支持暂停和启用每个转发项目
 - 支持管理面板中英文切换
-- 管理原生 TCP 的本机监听、目标端口及连接生命周期
-- 显式发布 TCP ingress 到既有 Cloudflare Tunnel，包含校验、备份和失败回退
+- 使用 Cloudflare Tunnel 原生 ingress 直达 HTTP 与 TCP 目标
+- 显式应用公网接线，包含校验、备份和失败回退
 
 示例：
 - `https://your-domain.com` → 管理后台
 - `https://demo.your-domain.com` → 你的内网服务
 
-Flux Gate 支持 HTTP Web 路由与原生 TCP 转发。TCP 路由在本机监听独立端口，转发到配置目标，并可从管理页发布到既有 Cloudflare Tunnel。TCP 由目标协议认证，Web 路由使用 HTTP Basic Auth。配置与发布流程见 [TCP 转发与 Tunnel 发布](docs/tcp-forwarding.md)。
+路由分为三种模式：
+
+| 模式 | 请求链路 |
+| --- | --- |
+| HTTP 密码保护 | Cloudflare → cloudflared → Flux Gate Basic Auth → 目标 |
+| HTTP 直连 | Cloudflare → cloudflared → 目标 |
+| TCP 直连 | Cloudflare 客户端 → Cloudflare → cloudflared → 目标 |
+
+保存配置后，点击“应用到 Tunnel”更新公网入口。应用成功前，旧入口可能继续生效。直连服务使用自身的认证。配置与发布流程见 [路由与 Tunnel 发布](docs/tcp-forwarding.md)。
 
 公网 `https://demo.example.com` 可以转发到内网 `http://192.168.1.10:3000`。Cloudflare 管理公网证书并终止浏览器 TLS，与 cloudflared 通过加密 Tunnel 通信。Flux Gate 当前固定使用 `http://` 连接 Web 目标，目前不支持 HTTPS origin；内部 HTTP 段不会自动变成 TLS，也不需要本机证书。
 
@@ -72,10 +80,10 @@ cp config.sample.json config.json
 - `auth.username`：登录用户名
 - `auth.password_hash`：密码的 SHA256 哈希；留空时首次启动默认 `admin/admin`
 - `routes`：子域名转发规则列表
-- `routes[].username`：可选，单个转发项自己的用户名；不填则使用默认管理账号
-- `routes[].password_hash`：可选，单个转发项自己的密码哈希；不填则使用默认管理密码
-- `routes[].no_password`：为 `true` 时，这个子网站不需要 Basic Auth
-- `routes[].disabled`：为 `true` 时，这个转发项会保留在配置中，但不再提供访问
+- `routes[].username` / `routes[].password_hash`：成对的 HTTP 自定义凭据；均不填时使用默认凭据。界面/API 保存自定义认证时，两项必填；编辑时也需重新填写密码。
+- `routes[].type`：`http`（默认）或 `tcp`
+- `routes[].no_password`：仅 HTTP；`true` 由 Tunnel 直达目标，`false` 经 Gate Basic Auth
+- `routes[].disabled`：保存为停用；应用到 Tunnel 后才会阻断其公网域名
 
 生成密码哈希：
 
@@ -91,6 +99,8 @@ cloudflared tunnel create my-tunnel
 cloudflared tunnel route dns my-tunnel your-domain.com
 cloudflared tunnel route dns my-tunnel "*.your-domain.com"
 ```
+
+按[接线指南](docs/tcp-forwarding.md#tunnel-integration)创建 Tunnel ingress，并启用集成。
 
 ### 5. 启动服务
 
@@ -143,7 +153,7 @@ Flux Gate 会把内网服务发布到公网。
 4. 目标服务是否真的在运行
 
 ### 怎么添加新路由？
-打开管理后台，填写子域名 / IP / 端口并保存即可。你也可以为单个转发项设置独立用户名密码、开启无密码访问，或者直接停用该转发项。所有修改都会写入 `config.json` 并立即生效。
+打开管理后台，填写子域名 / IP / 端口并保存即可。你也可以为单个转发项设置独立用户名密码、开启无密码访问，或者直接停用该转发项。所有模式的修改都会写入 `config.json`，随后需点击“应用到 Tunnel”更新公网接线。直连切换为密码保护时，应用成功前旧的公网直连仍然可用。
 
 ## License
 

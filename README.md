@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-A lightweight self-hosted HTTP gateway for publishing internal web services through Cloudflare Tunnel, with a simple web admin panel and subdomain-based routing.
+A self-hosted control panel for publishing HTTP and TCP services through Cloudflare Tunnel. Add a password-protection gateway only to HTTP routes that need it.
 
 ![](assets/admin.png)
 
@@ -16,14 +16,22 @@ Flux Gate lets you:
 - optionally set a custom username/password or no password for each forwarded route
 - pause and re-enable each forwarded route individually
 - switch the dashboard between Chinese and English
-- manage TCP loopback listeners, target ports and connection lifecycle
-- explicitly publish TCP ingress to an existing Cloudflare Tunnel with validation and rollback
+- connect HTTP and TCP targets directly through native Cloudflare Tunnel ingress
+- explicitly apply routing changes with validation, backups and rollback
 
 Example:
 - `https://your-domain.com` → admin panel
 - `https://demo.your-domain.com` → your internal service
 
-Flux Gate supports HTTP web routes and native TCP forwarding. TCP routes bind a loopback listener, forward to the configured target, and can be published through Cloudflare Tunnel from the admin panel. Target protocols handle their own authentication; HTTP Basic Auth applies to web routes. See [TCP forwarding and Tunnel publishing](docs/tcp-forwarding.md).
+Choose one of three route modes:
+
+| Mode | Request path |
+| --- | --- |
+| HTTP with password protection | Cloudflare → cloudflared → Flux Gate Basic Auth → target |
+| Direct HTTP | Cloudflare → cloudflared → target |
+| Direct TCP | Cloudflare client → Cloudflare → cloudflared → target |
+
+Save the configuration, then apply it to Tunnel. Until application succeeds, previous public ingress can remain active. Direct services use their own authentication. See [routing and Tunnel publishing](docs/tcp-forwarding.md).
 
 A public HTTPS URL such as `https://demo.example.com` can forward to an internal HTTP target such as `http://192.168.1.10:3000`. Cloudflare manages the public certificate and terminates browser TLS; its connection to cloudflared uses an encrypted Tunnel. Flux Gate currently uses `http://` for web targets; HTTPS origins are not supported. The internal HTTP segment does not become TLS automatically and does not require a local certificate.
 
@@ -72,10 +80,10 @@ Field summary:
 - `auth.username`: login username
 - `auth.password_hash`: SHA256 password hash; empty means first run uses `admin/admin`
 - `routes`: list of subdomain forwarding rules
-- `routes[].username`: optional route-specific username; empty means use the default admin username
-- `routes[].password_hash`: optional route-specific SHA256 password hash; empty means use the default admin password
-- `routes[].no_password`: when `true`, that sub-site is exposed without Basic Auth
-- `routes[].disabled`: when `true`, that route is saved but unavailable
+- `routes[].username` / `routes[].password_hash`: pair of custom HTTP credentials; omit both for default credentials. Custom saves in the UI/API require both a username and a freshly entered password, including edits.
+- `routes[].type`: `http` (default) or `tcp`
+- `routes[].no_password`: HTTP only; `true` connects Tunnel directly to the target, `false` routes through Gate Basic Auth
+- `routes[].disabled`: saves a blocked route; apply to Tunnel to block its public hostname
 
 To generate a password hash:
 
@@ -91,6 +99,8 @@ cloudflared tunnel create my-tunnel
 cloudflared tunnel route dns my-tunnel your-domain.com
 cloudflared tunnel route dns my-tunnel "*.your-domain.com"
 ```
+
+Create the Tunnel ingress and enable the integration using the [routing guide](docs/tcp-forwarding.md#tunnel-integration).
 
 ### 5. Start services
 
@@ -143,7 +153,7 @@ Check these first:
 4. the target service is actually running
 
 ### How do I add a new route?
-Open the admin panel, fill in subdomain / IP / port, and save it. You can also edit route-specific username/password, allow no password, or disable the route. Changes are written to `config.json` and apply immediately.
+Open the admin panel, fill in subdomain / IP / port, and save it. You can also edit route-specific username/password, allow no password, or disable the route. Changes are saved to `config.json`; click Apply to Tunnel to update public ingress for every mode. A direct route switched to password protection remains directly accessible until application succeeds.
 
 ## License
 

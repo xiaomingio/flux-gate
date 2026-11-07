@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * 文件说明: 验证暂存发布包，备份并切换网关源码/依赖，保留路由与认证，失败恢复原服务。
+ * 文件说明: 验证暂存发布包，备份切换源码、依赖及运维入口，保留配置并在失败时恢复。
  * 对应文档: docs/tcp-forwarding.md
  */
 const fs = require('node:fs');
@@ -36,7 +36,7 @@ async function main() {
       (args[2] && args[2] !== '--enable-tunnel')) throw new Error('Usage: install-release.cjs /absolute/release /absolute/service [--enable-tunnel]');
   const release = fs.realpathSync(args[0]), target = fs.realpathSync(args[1]);
   if (release === target || release.startsWith(target + path.sep) || target.startsWith(release + path.sep)) throw new Error('Release and service must be separate directories');
-  for (const file of ['src/server.js', 'package.json', 'package-lock.json']) {
+  for (const file of ['src/server.js', 'deploy/cloudflare-tunnel/apply-routes.cjs', 'docs/tcp-forwarding.md', 'package.json', 'package-lock.json']) {
     if (!fs.statSync(path.join(release, file)).isFile()) throw new Error(`Release is missing ${file}`);
   }
   const configFile = path.join(target, 'config.json');
@@ -46,6 +46,18 @@ async function main() {
       topology.pm2_env.pm_exec_path !== path.join(target, 'src/server.js')) throw new Error('Existing flux-gate PM2 process does not belong to this service');
   await run('npm', ['ci', '--omit=dev'], release);
   await run('npm', ['audit', '--omit=dev'], release);
+  if (config.tunnel?.enabled) {
+    const Route = require(path.join(release, 'src/Route'));
+    const TunnelConfig = require(path.join(release, 'src/TunnelConfig'));
+    const direct = (config.routes || []).filter((route) => new Route(route).path === 'direct');
+    if (direct.length) {
+      const status = new TunnelConfig({ loadConfig: () => JSON.parse(fs.readFileSync(configFile, 'utf8')) }).status();
+      if (!status.current_verified || direct.some((route) => !status.changes.some((change) =>
+        change.hostname === `${route.subdomain}.${config.baseDomain}` && change.status === 'applied'))) {
+        throw new Error('Apply and verify the release Tunnel routes before switching an application with direct services');
+      }
+    }
+  }
   const smokePort = await freePort();
   const smokeConfig = { ...config, port: smokePort, routes: (config.routes || []).map((route) => ({ ...route, disabled: true })), tunnel: { enabled: false } };
   if (fs.existsSync(path.join(release, 'config.json'))) throw new Error('Release staging must not contain a live config.json');
@@ -61,8 +73,12 @@ async function main() {
   const stamp = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date()).replace(/\D/g, '');
   const backup = path.join(os.homedir(), 'backups/flux-gate/application', `${stamp}-${crypto.randomUUID()}`);
   fs.mkdirSync(backup, { recursive: true, mode: 0o700 });
-  for (const file of ['package.json', 'package-lock.json', 'config.json']) fs.copyFileSync(path.join(target, file), path.join(backup, file));
-  for (const file of ['package.json', 'package-lock.json', 'config.json']) fs.chmodSync(path.join(backup, file), 0o600);
+  const copied = ['package.json', 'package-lock.json', 'config.json', 'README.md', 'README.zh-CN.md', 'config.sample.json'];
+  const existed = copied.filter((file) => fs.existsSync(path.join(target, file)));
+  for (const file of existed) {
+    fs.copyFileSync(path.join(target, file), path.join(backup, file));
+    fs.chmodSync(path.join(backup, file), 0o600);
+  }
   console.log(`Release recovery package: ${backup}`);
   if (fs.readFileSync(configFile, 'utf8') !== originalText) throw new Error('Service configuration changed during preparation; abort before switching');
   const moved = [];
@@ -72,11 +88,13 @@ async function main() {
     throw new Error('Service configuration changed before switch; latest configuration kept');
   }
   try {
-    for (const name of ['src', 'node_modules']) {
-      fs.renameSync(path.join(target, name), path.join(backup, name)); moved.push(name);
+    for (const name of ['src', 'node_modules', 'deploy', 'docs']) {
+      const present = fs.existsSync(path.join(target, name));
+      if (present) fs.renameSync(path.join(target, name), path.join(backup, name));
+      moved.push({ name, present });
       fs.renameSync(path.join(release, name), path.join(target, name));
     }
-    for (const file of ['package.json', 'package-lock.json']) fs.copyFileSync(path.join(release, file), path.join(target, file));
+    for (const file of copied.filter((file) => file !== 'config.json')) fs.copyFileSync(path.join(release, file), path.join(target, file));
     if (args[2]) {
       config.tunnel = { ...(config.tunnel || {}), enabled: true };
       const temporary = `${configFile}.${crypto.randomUUID()}.tmp`;
@@ -90,11 +108,14 @@ async function main() {
     fs.writeFileSync(path.join(backup, 'release-complete'), 'Gateway restarted and authentication challenge verified.\n', { mode: 0o600 });
     console.log('Gateway release complete. Existing route and authentication configuration preserved.');
   } catch (error) {
-    for (const name of moved.reverse()) {
+    for (const { name, present } of moved.reverse()) {
       if (fs.existsSync(path.join(target, name))) fs.renameSync(path.join(target, name), path.join(backup, `failed-${name}`));
-      fs.renameSync(path.join(backup, name), path.join(target, name));
+      if (present) fs.renameSync(path.join(backup, name), path.join(target, name));
     }
-    for (const file of ['package.json', 'package-lock.json', 'config.json']) fs.copyFileSync(path.join(backup, file), path.join(target, file));
+    for (const file of copied) {
+      if (existed.includes(file)) fs.copyFileSync(path.join(backup, file), path.join(target, file));
+      else if (fs.existsSync(path.join(target, file))) fs.unlinkSync(path.join(target, file));
+    }
     await run('pm2', ['restart', 'flux-gate'], target);
     await healthy(Number(config.port) || 8080);
     throw new Error(`${error.message}; prior service restored from ${backup}`);

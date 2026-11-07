@@ -1,51 +1,38 @@
-# TCP 转发与 Cloudflare Tunnel
+# HTTP、TCP 路由与 Tunnel 发布
 
-Flux Gate 直接使用 Node.js TCP socket 转发字节流。HTTP 路由继续按子域名代理 Web 服务；TCP 路由使用独立的本机监听端口。管理界面提供 HTTP/TCP 类型、TCP 监听端口、目标地址、启停和删除。
+Flux Gate 管理 Cloudflare Tunnel 的原生 ingress。三种模式使用同一组目标主机和端口，支持 IPv4、IPv6 和主机名。
 
-## 路由配置
+| 模式 | 配置 | 请求链路 |
+| --- | --- | --- |
+| HTTP 密码保护 | `type: "http"`, `no_password: false` | Cloudflare → cloudflared → Flux Gate Basic Auth → HTTP 目标 |
+| HTTP 直连 | `type: "http"`, `no_password: true` | Cloudflare → cloudflared → HTTP 目标 |
+| TCP 直连 | `type: "tcp"` | Cloudflare 客户端 → Cloudflare → cloudflared → TCP 目标 |
+
+HTTP 密码保护可使用默认账号密码，也可为路由单独设置账号密码。直连 HTTP 由目标服务自身认证；TCP 使用 SSH key、数据库账号等目标协议认证。TCP 不接受 HTTP 账号密码字段。
+
+自定义账号密码在新增或完整编辑保存时都必须重新填写两项，密码不回显，也不留空复用旧密码。仅启停路由的 PATCH 操作保留现有凭据。请求层的 `auth_mode` 区分 `default`、`custom` 与直连 HTTP 的 `none`，不单独持久化。
+
+## 配置示例
 
 ```json
 {
   "type": "tcp",
   "subdomain": "database",
-  "listen_port": 15432,
-  "ip": "192.168.1.10",
+  "ip": "2001:db8::10",
   "port": 5432,
   "description": "Database access",
   "disabled": false
 }
 ```
 
-`listen_port` 是 Flux Gate 本机的监听端口，只绑定 `127.0.0.1`，范围为 1024～65535，不能与管理端口或其他 TCP 路由重复。`ip` / `port` 是目标主机与端口。已有未填写 `type` 的路由按 HTTP 处理。
+`ip` 填目标 IP 或主机名，`port` 填 1～65535 的端口。IPv6 可以带方括号输入，保存时使用裸地址，接线 URL 自动添加方括号。省略 `type` 的已有路由按 HTTP 处理。
 
-保存启用的 TCP 路由时，后台先实际绑定端口，再原子保存配置。端口被占用、无权限或保存失败时，原有配置与监听继续有效。启停、修改目标、改名及删除会关闭该路由已有连接，后续连接使用新配置；启动时会重新建立已保存监听，绑定失败则停止启动并显示错误。
+Flux Gate 只代理需要密码保护的 HTTP 路由，并支持 HTTP WebSocket 升级。直连 HTTP 与 TCP 的连接由 cloudflared 直接发起到目标；网关进程不承担这两类流量。FTP 等使用额外数据连接的协议需要分别安排数据连接，单条 TCP 路由不能覆盖完整 FTP 服务。
 
-每条路由最多 32 个连接，全部 TCP 路由合计最多 128 个。目标连接建立超时为 10 秒；转发使用标准流的背压和半关闭，不缓存整份传输，也不主动重试中断的业务请求。目标在界面中显示为固定的 `tcp://`，端口由用户自行填写。FTP 等使用额外数据连接的协议需要另行安排这些连接，单条 TCP 路由不能覆盖完整 FTP 服务。TCP 不使用 HTTP Basic Auth，认证与加密由目标协议负责，例如 SSH 公钥或数据库自身 TLS/账号。
+HTTP 直连 ingress 设置 `originRequest.httpHostHeader` 为目标的 `host:port`，保持与网关原有 `changeOrigin` 相同的目标 Host。密码保护 ingress 保留公网 Host，使网关能识别子域名。跨层的 HTTPS、可信代理、Origin 与 Cookie 设置仍由目标服务正确配置。
 
-## 公网接入
-
-Cloudflare Tunnel 的 HTTP wildcard 规则不能把 TCP 自动交给网关。每个启用的 TCP 路由需要一条独立 ingress，例如：
-
-```yaml
-ingress:
-  - hostname: database.example.com
-    service: tcp://127.0.0.1:15432
-  - hostname: "*.example.com"
-    service: http://127.0.0.1:8080
-  - service: http_status:404
-```
-
-DNS 域名本身不限定 HTTP 或 TCP；这里的子域名用于让 cloudflared 选择 Tunnel 入口，不是网页 URL。HTTP 请求携带 Host，能够共用网关 HTTP 端口；普通 TCP 连接不携带 DNS 名，因此每条路由需要独立监听端口。TLS SNI 只适用于特定 TLS 流量，不能通用于 SSH 等协议；网关不额外实现协议识别或多路复用。域名还须通过 DNS 指向该 Tunnel。客户端使用官方 `cloudflared`：
-
-```sh
-cloudflared access tcp --hostname database.example.com --url 127.0.0.1:15433
-```
-
-随后让数据库客户端连接本机 `127.0.0.1:15433`。SSH 目标也可使用 `cloudflared access ssh` 作为 SSH 的 ProxyCommand，服务端仍按 SSH key 鉴权。公开的 Tunnel TCP 入口需要 Cloudflare 官方客户端，不能直接向域名的任意公网 TCP 端口连接普通客户端。客户端传输由 Cloudflare 实现，Flux Gate 不实现额外的 WebSocket 隧道协议。
-
-生产中可以另行维护独立的恢复入口，直接连接到目标服务，放在下述受管区块之外。这类入口不依赖 Flux Gate 应用是否运行。
-
-## 管理界面发布到 Tunnel
+<a id="tunnel-integration"></a>
+## Tunnel 集成
 
 在受信任的网关 `config.json` 中启用集成：
 
@@ -59,33 +46,70 @@ cloudflared access tcp --hostname database.example.com --url 127.0.0.1:15433
 }
 ```
 
-省略 `config_file` 时使用运行用户的 `~/.cloudflared/config.yml`，省略 `process_name` 时使用 PM2 的 `cloudflare-tunnel`。网关进程必须能运行 `cloudflared`、`pm2`，读写 Tunnel 配置并重启该进程。配置由部署者维护，网页请求不能传入命令或文件路径。
+省略 `config_file` 时使用运行用户的 `~/.cloudflared/config.yml`，省略 `process_name` 时使用 PM2 的 `cloudflare-tunnel`。进程需要读取和写入 Tunnel 配置，并能运行 `cloudflared` 与 `pm2`。网页请求不能指定文件路径或命令。
 
-保存 TCP 路由只改变真实本机监听。管理页的 Tunnel 区域显示待应用状态；点击“应用到 Tunnel”并确认后，后台才发布公网接线。重启共享 Tunnel 时，现有 Tunnel 连接可能短暂中断。已应用且内容没有变化时，重复应用不会重启进程。
+Tunnel 配置必须使用 block-list ingress。先部署管理域名、通配 HTTP 入口和最终回退；网关会在它们之前插入受管规则：
 
-后台只管理 `# BEGIN FLUX GATE TCP` 与 `# END FLUX GATE TCP` 之间的片段。原有 HTTP、独立 SSH 等其他 ingress 与注释保留；若要发布的 hostname 已由区块外规则占用，会停止并要求先处理冲突。不要手工移动或修改受管标记。
-
-发布流程使用进程内锁和排他文件锁：生成候选配置，运行 `cloudflared tunnel ingress validate`，将原配置备份到运行用户的 `~/backups/flux-gate/tunnel/`，核对源文件未并发变化，再原子替换并重启指定 Tunnel 进程。重启失败会还原原文件并再次重启；恢复重启也失败时明确返回需要人工恢复的错误。配置文件与备份以 600 权限保存。
-
-“已应用”表示受管片段与当前路由一致，且配置全文哈希对应成功的重启记录。它不代表 DNS、Cloudflare Access 策略或目标服务登录已验收；应使用公网客户端完成真实连接。配置变动、启停或删除后需要再次应用，才能移除或修改旧公网入口。
-
-也可在主机上执行同一发布逻辑：
-
-```sh
-node deploy/cloudflare-tunnel/apply-tcp.cjs --config /absolute/path/to/flux-gate/config.json
+```yaml
+tunnel: your-tunnel-id
+credentials-file: /absolute/path/to/tunnel-credentials.json
+ingress:
+  - hostname: example.com
+    service: http://127.0.0.1:8080
+  - hostname: "*.example.com"
+    service: http://127.0.0.1:8080
+  - service: http_status:404
 ```
 
-如进程意外退出留下 `.flux-gate.lock`，先确认没有仍在运行的发布操作、检查实际配置和 PM2 状态，再移除锁。不要盲目重试状态不明的发布。需要手动恢复时，使用已输出的备份文件还原 Tunnel 配置，运行原生校验后重启相同 Tunnel 进程；独立恢复入口应预先验证可用。
+域名和通配 DNS 必须指向该 Tunnel。配置中的受管片段位于 `# BEGIN FLUX GATE ROUTES` 与 `# END FLUX GATE ROUTES` 之间。管理域名、通配规则、独立 SSH 恢复入口和其他区块外内容会保留。显式 hostname 与区块外规则冲突时停止发布。
 
-## HTTPS 与目标协议
+停用路由会生成该 hostname 的 `http_status:404` 规则；删除或改名后的受管 hostname 也保留为 404，避免被通配规则重新开放。需要重新使用域名时创建同名路由即可替换阻断规则。
 
-公网 `https://demo.example.com` 可以指向目标 `http://192.168.1.10:3000`。浏览器到 Cloudflare 的 TLS 在 Cloudflare 边缘终止，其公网证书由 Cloudflare 管理和续期；Cloudflare 与本机 cloudflared 通过加密 Tunnel 通信。
+## 保存与应用
 
-Flux Gate 当前对 Web 目标固定使用 `http://`，目前不支持 HTTPS origin。公网使用 HTTPS 不要求本机目标安装 HTTPS 证书，也不意味着内部这段自动采用 TLS。loopback 目标使用 HTTP；跨局域网访问 HTTP 目标时，该内部网络段仍为明文，应按实际信任边界部署。若目标必须使用 HTTPS，需要另外实现并配置其证书信任。
+保存路由只更新网关配置。所有模式都需要点击“应用到 Tunnel”，才能更新公网接线。目标、类型、启停、删除和密码保护分支修改均应核对应用状态。
 
-TCP 转发不解释协议内的 TLS 或证书。数据库、SSH 等协议的身份认证和端到端加密由相应服务与客户端负责。
+尤其是 HTTP 直连切换为密码保护：保存后旧的公网直连仍可访问，直到应用成功。界面分别展示当前接线和待应用接线，不能将已保存视为已受保护。直连停用或删除也要应用后才阻断公网。HTTP 已经过网关时，账号密码与网关内的目标变更可立即影响请求。
+
+后台使用进程内锁和排他文件锁，生成候选配置并调用 `cloudflared tunnel ingress validate`。原配置备份到运行用户的 `~/backups/flux-gate/tunnel/`；确认文件和路由未并发变化后，原子替换配置并重启指定 Tunnel。重启失败会还原原文件并再次重启；恢复重启失败会明确要求使用主机恢复入口。配置和备份使用 600 权限。
+
+“已应用”表示受管规则与已保存路由一致，且配置全文哈希对应成功的重启记录。它不等于 DNS、Cloudflare Access、目标登录或业务流程已通过验收。无法确认当前配置对应成功重启时，当前链路显示未知。已应用且内容无变化时，重复应用不会重启 Tunnel。共享 Tunnel 重启可能短暂中断现有连接。
+
+API `GET /api/tunnel` 返回期望 `rules`、已确认 `current_rules`、`current_verified` 和逐域名 `changes`。`changes` 包含 `desired_service`、`current_service`、`desired_path`、`current_path` 和 `status`。`GET /api/routes` 为数组，各路由提供 `target_service`、`tunnel_service`、相同的当前/期望路径、`current_verified` 与 `publication_status`；不会返回密码哈希。
+
+也可在主机执行同一发布逻辑：
+
+```sh
+node deploy/cloudflare-tunnel/apply-routes.cjs --config /absolute/path/to/flux-gate/config.json
+```
+
+如果遗留 `.flux-gate.lock`，先确认没有发布在运行并检查配置和 PM2 状态，再移除锁。恢复时先停止配置写入，将备份恢复到原 Tunnel 路径，执行原生校验后重启相同 Tunnel 进程。升级过程中若同时切换网关和 Tunnel，应先恢复网关应用，再恢复与该版本匹配的 Tunnel 接线，避免旧的无密码路由被新网关拒绝。
+
+## TCP 客户端
+
+TCP 子域名用于选择 Cloudflare Tunnel 入口，不能用普通客户端直接连接该域名的任意公网 TCP 端口。使用官方 `cloudflared`：
+
+```sh
+cloudflared access tcp --hostname database.example.com --url 127.0.0.1:15433
+```
+
+然后让数据库客户端连接 `127.0.0.1:15433`。这个端口是客户端转接端口。SSH 可以使用 `cloudflared access ssh` 作为 SSH 的 ProxyCommand，服务器仍按 SSH key 鉴权。Cloudflare 承担客户端隧道传输，Flux Gate 不自建隧道协议。
+
+建议在受管区块外维护独立的主机恢复入口，直连 SSH 等服务，预先验证其密钥登录。恢复入口不依赖 Flux Gate 应用运行。
+
+## TLS、认证与目标协议
+
+公网 `https://demo.example.com` 可以连接内部 `http://192.168.1.10:3000`。浏览器 TLS 在 Cloudflare 边缘终止，公网证书由 Cloudflare 管理和续期；Cloudflare 与 cloudflared 通过加密 Tunnel 通信。
+
+HTTP 目标当前固定使用 `http://`，不支持 HTTPS origin。内部 HTTP 段不会自动变成 TLS，也不要求目标配置本机证书。跨局域网使用 HTTP 仍是明文，应按内部网络的信任边界配置。
+
+Flux Gate Basic Auth 提供 HTTP 密码保护，不提供目标协议的端到端加密。TCP 不解释协议内的 TLS 或证书；SSH、数据库等服务的认证和端到端加密由相应服务与客户端负责。
+
+## 升级迁移
+
+由 TCP 监听版本升级时，发布逻辑可将一个已存在的 `FLUX GATE TCP` 区块替换为 `FLUX GATE ROUTES`，不会同时保留两份受管规则。两种标记同时存在会停止发布，要求先检查配置。旧配置中的 TCP 监听字段不参与新接线；该路由下次保存时会替换为当前目标结构。先发布新的 Tunnel 接线并验收直连，再切换网关应用，可避免原有 HTTP 无密码路由在升级间隙中断。
 
 ## 官方资料
 
-- [Cloudflare Tunnel 支持的协议](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/routing-to-tunnel/protocols/)：TCP、SSH 与客户端要求
-- [客户端 cloudflared 连接 SSH](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/use-cases/ssh/ssh-cloudflared-authentication/)：SSH origin 和 ProxyCommand
+- [Cloudflare Tunnel 支持的协议](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/routing-to-tunnel/protocols/)
+- [客户端 cloudflared 连接 SSH](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/use-cases/ssh/ssh-cloudflared-authentication/)

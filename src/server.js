@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const RouteConfig = require('./RouteConfig');
-const { isTcp } = require('./TcpListeners');
+const Route = require('./Route');
 const TunnelConfig = require('./TunnelConfig');
 
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '..', 'config.json');
@@ -63,24 +63,22 @@ function normalizeBoolean(value) {
   return value === true || value === 'true' || value === '1' || value === 1 || value === 'on';
 }
 
-function sanitizeRoute(route, runtime, config) {
-  if (isTcp(route)) return {
-    type: 'tcp', subdomain: route.subdomain, ip: route.ip, port: route.port,
-    description: route.description || '', disabled: Boolean(route.disabled),
-    listen_port: route.listen_port, listener_status: runtime.tcp.status(route),
-    hostname: `${route.subdomain}.${config.baseDomain}`,
-    tunnel_service: `tcp://127.0.0.1:${route.listen_port}`,
-  };
+function sanitizeRoute(route, config, tunnelStatus) {
+  const model = new Route(route);
+  const desired = model.rule(config);
+  const current = tunnelStatus.changes.find((change) => change.hostname === desired.hostname);
   return {
-    type: 'http',
+    type: model.isTcp ? 'tcp' : 'http',
     subdomain: route.subdomain,
     ip: route.ip,
     port: route.port,
     description: route.description || '',
-    username: route.username || '',
-    no_password: Boolean(route.no_password),
     disabled: Boolean(route.disabled),
-    has_custom_auth: Boolean(route.username || route.password_hash),
+    ...(!model.isTcp && { username: route.username || '', no_password: Boolean(route.no_password), has_custom_auth: Boolean(route.username || route.password_hash) }),
+    hostname: desired.hostname, target_service: model.targetService, tunnel_service: desired.service,
+    desired_path: model.path, current_path: current?.current_path || 'unknown',
+    current_service: current?.current_service || null, current_verified: tunnelStatus.current_verified,
+    publication_status: ['disabled', 'error'].includes(tunnelStatus.status) ? tunnelStatus.status : current?.status || 'pending',
   };
 }
 
@@ -190,7 +188,10 @@ function createApp(options = {}) {
   const { loadConfig, saveConfig } = store;
   const runtime = new RouteConfig(store);
   const tunnel = new TunnelConfig(store);
-  const serialized = (config) => (config.routes || []).map((route) => sanitizeRoute(route, runtime, config));
+  const serialized = (config) => {
+    const status = tunnel.status();
+    return (config.routes || []).map((route) => sanitizeRoute(route, config, status));
+  };
 
   const app = express();
   app.set('view engine', 'ejs');
@@ -226,7 +227,7 @@ function createApp(options = {}) {
 
     if (subdomain) {
       const route = currentConfig.routes.find((r) => r.subdomain === subdomain);
-      if (!route || route.disabled || isTcp(route)) {
+      if (!route || new Route(route).path !== 'gateway') {
         res.status(404).send(translate(lang, 'routeNotConfigured', { subdomain }));
         return;
       }
@@ -236,7 +237,7 @@ function createApp(options = {}) {
         return;
       }
 
-      const target = `http://${route.ip}:${route.port}`;
+      const target = new Route(route).targetService;
       console.log(`[→] ${subdomain}.${baseDomain} ${req.method} ${req.path} → ${target}`);
       httpProxyInstance.web(req, res, { target });
       return;
@@ -349,22 +350,32 @@ function createApp(options = {}) {
         const originalSub = String(original_subdomain || cleanSub).toLowerCase();
         const idx = config.routes.findIndex((route) => route.subdomain === originalSub);
         if (original_subdomain && idx < 0) throw Object.assign(new Error('Original route no longer exists'), { status: 404 });
-        const previous = idx >= 0 ? config.routes[idx] : null;
         const entry = { type, subdomain: cleanSub, ip, port, description: description || '', disabled: normalizeBoolean(req.body.disabled) };
         if (type === 'tcp') {
-          if (username || password || normalizeBoolean(req.body.no_password) || req.body.password_hash) {
+          if (username || password || normalizeBoolean(req.body.no_password) || req.body.password_hash || req.body.auth_mode) {
             throw Object.assign(new Error('TCP uses the target service authentication; HTTP credentials are not supported'), { status: 400 });
           }
-          entry.listen_port = Number(req.body.listen_port);
         } else {
           const cleanUsername = String(username || '').trim();
           const cleanPassword = String(password || '').trim();
           entry.no_password = normalizeBoolean(req.body.no_password);
-          if (cleanUsername) entry.username = cleanUsername;
-          else if (cleanPassword && previous?.username) entry.username = previous.username;
-          if (cleanPassword) entry.password_hash = hashPassword(cleanPassword);
-          else if (cleanUsername && previous?.password_hash) entry.password_hash = previous.password_hash;
+          const authMode = req.body.auth_mode || (cleanUsername || cleanPassword ? 'custom' : entry.no_password ? 'none' : 'default');
+          if (!['custom', 'default', 'none'].includes(authMode)) throw Object.assign(new Error('Unknown authentication mode'), { status: 400 });
+          if (authMode === 'custom' && entry.no_password || authMode === 'none' && !entry.no_password) {
+            throw Object.assign(new Error('Authentication mode does not match the HTTP route mode'), { status: 400 });
+          }
+          if (!entry.no_password) {
+            if (authMode === 'custom' || cleanUsername || cleanPassword) {
+              if (!cleanUsername || !cleanPassword) throw Object.assign(new Error('Custom authentication requires both username and password'), { status: 400 });
+              entry.username = cleanUsername;
+              entry.password_hash = hashPassword(cleanPassword);
+            }
+          }
         }
+        const model = new Route(entry);
+        model.validate();
+        entry.ip = model.host;
+        entry.port = Number(port);
         if (idx >= 0) config.routes[idx] = entry;
         else config.routes.push(entry);
       });
@@ -402,14 +413,14 @@ function createApp(options = {}) {
     if (!subdomain) return socket.destroy();
 
     const route = currentConfig.routes.find((r) => r.subdomain === subdomain);
-    if (!route || route.disabled || isTcp(route)) return socket.destroy();
+    if (!route || new Route(route).path !== 'gateway') return socket.destroy();
 
     if (!verifyBasicAuth(req, loadConfig, route)) {
       socket.destroy();
       return;
     }
 
-    httpProxyInstance.ws(req, socket, head, { target: `http://${route.ip}:${route.port}` });
+    httpProxyInstance.ws(req, socket, head, { target: new Route(route).targetService });
   };
 
   const listen = app.listen.bind(app);
@@ -418,7 +429,6 @@ function createApp(options = {}) {
     server.on('upgrade', upgrade);
     const close = server.close.bind(server);
     server.close = (callback) => {
-      runtime.close();
       for (const socket of upgraded) socket.destroy();
       return close(callback);
     };
@@ -441,12 +451,10 @@ async function startServer(options = {}) {
   const baseDomain = config.baseDomain || 'localhost';
 
   const server = app.listen(port, '0.0.0.0');
-  try {
-    await new Promise((resolve, reject) => {
-      server.once('error', reject);
-      server.once('listening', resolve);
-    });
-  } catch (error) { app.locals.runtime.close(); throw error; }
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.once('listening', resolve);
+  });
   const latestConfig = loadConfig();
   console.log(`✓ Proxy server running at http://localhost:${port}`);
   console.log(`✓ Base domain: ${baseDomain}`);
