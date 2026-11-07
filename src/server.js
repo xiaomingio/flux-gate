@@ -463,7 +463,7 @@ async function startServer(options = {}) {
     server.once('listening', resolve);
   });
   const latestConfig = loadConfig();
-  console.log(`✓ Proxy server running at http://localhost:${port}`);
+  console.log(`✓ Flux Gate running at http://localhost:${port}`);
   console.log(`✓ Base domain: ${baseDomain}`);
   console.log(`✓ Routes configured: ${(latestConfig.routes || []).length}`);
   return server;

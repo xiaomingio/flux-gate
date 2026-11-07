@@ -11,7 +11,7 @@
   "targetIp": "内网目标 IP",
   "port": "目标端口",
   "descriptionOptional": "名称（可选）",
-  "descriptionPlaceholder": "例如 Agent Beat",
+  "descriptionPlaceholder": "例如 NAS",
   "add": "添加",
   "update": "更新",
   "emptyRoutes": "暂无路由，添加一个开始使用",

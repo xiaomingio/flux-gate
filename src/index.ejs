@@ -449,19 +449,38 @@ function pathLabel(path) {
   return ({ gateway: ui.pathGateway, direct: ui.pathDirect, blocked: ui.pathBlocked, unmanaged: ui.pathUnmanaged, unknown: ui.currentUnknown })[path] || ui.currentUnknown;
 }
 
+function renderWebAddress(value) {
+  const label = escapeHtml(value);
+  try {
+    const url = new URL(value);
+    if (['http:', 'https:'].includes(url.protocol)) return `<a href="${escapeHtml(url.href)}" target="_blank" rel="noopener noreferrer" class="break-all underline decoration-slate-300 underline-offset-2 hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${label}</a>`;
+  } catch {}
+  return label;
+}
+
 function renderRoutePath(route) {
   const current = route.current_verified ? route.current_path : 'unknown';
-  const source = escapeHtml(formatPublicAddress(routeName(route), route.target_service, true));
-  let chain = `<span class="break-all">${source}</span><span>→ ${escapeHtml(pathLabel(current))}</span>`;
+  const source = renderWebAddress(formatPublicAddress(routeName(route), route.target_service, true));
+  const nodes = [source];
   if (current === 'gateway' || current === 'direct') {
     const gatewayActive = current === 'gateway' && route.desired_path === 'gateway';
     const service = current === 'direct' ? route.current_service : gatewayActive ? route.target_service : ui.pathBlocked;
-    chain = `<span class="break-all">${source}</span><span class="text-slate-500">→ Cloudflare → Cloudflare Tunnel</span>${current === 'gateway' ? `<span>→ FluxGate${gatewayActive ? ` (${escapeHtml(ui.basicAuthProtection)})` : ''}</span>` : ''}<span class="break-all">→ ${escapeHtml(service)}</span>`;
+    nodes.push('Cloudflare', 'Cloudflare Tunnel');
+    if (current === 'gateway') nodes.push(`FluxGate${gatewayActive ? ` (${escapeHtml(ui.basicAuthProtection)})` : ''}`);
+    nodes.push(renderWebAddress(service));
+  } else if (current === 'blocked') {
+    nodes.push('Cloudflare', 'Cloudflare Tunnel', `<span class="rounded border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">${escapeHtml(ui.pathBlocked)}</span>`);
+    if (routeType(route) === 'http' && !route.no_password) nodes.push(`FluxGate (${escapeHtml(ui.basicAuthProtection)})`);
+    nodes.push(renderWebAddress(route.target_service));
+  } else {
+    nodes.push(escapeHtml(pathLabel(current)));
+    if (current === 'unmanaged' && route.current_service) nodes.push(renderWebAddress(route.current_service));
   }
+  const arrow = '<span aria-hidden="true" class="text-slate-400"><span class="lg:hidden">↓</span><span class="hidden lg:inline">→</span></span>';
+  const chain = nodes.map(node => `<span class="min-w-0 break-all">${node}</span>`).join(arrow);
   const pending = route.publication_status === 'pending' || route.publication_status === 'error';
-  if (current === 'unmanaged' && route.current_service) chain += `<span class="break-all">→ ${escapeHtml(route.current_service)}</span>`;
   const desired = route.desired_path === 'blocked' ? ui.blockPublicAccess : `${pathLabel(route.desired_path)} → ${route.target_service}`;
-  return `<div class="min-w-0"><div aria-label="${escapeHtml(ui.currentPath)}" class="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm leading-5 text-slate-700">${chain}</div>${pending ? `<div class="mt-2 border-t border-slate-200 pt-2 text-sm"><p class="break-all text-amber-700">${ui.desiredPath}: ${escapeHtml(desired)}</p>${current === 'direct' && route.desired_path === 'gateway' ? `<p class="mt-1 text-red-700">${ui.notProtectedYet}</p>` : ''}</div>` : ''}</div>`;
+  return `<div class="min-w-0"><div aria-label="${escapeHtml(ui.currentPath)}" class="flex min-w-0 flex-col items-start gap-x-1.5 gap-y-1 lg:flex-row lg:flex-wrap lg:items-center text-sm leading-5 text-slate-700">${chain}</div>${pending ? `<div class="mt-2 border-t border-slate-200 pt-2 text-sm"><p class="break-all text-amber-700">${ui.desiredPath}: ${escapeHtml(desired)}</p>${current === 'direct' && route.desired_path === 'gateway' ? `<p class="mt-1 text-red-700">${ui.notProtectedYet}</p>` : ''}</div>` : ''}</div>`;
 }
 
 function toggleAuthModeFields() {
@@ -489,14 +508,14 @@ function icon(name) {
 }
 
 function renderReadOnlyRule(rule, management = false) {
-  return `<article class="grid min-w-0 gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 lg:grid-cols-[minmax(16rem,0.95fr)_minmax(0,1.4fr)_auto] lg:items-center lg:gap-x-4"><h3 class="min-w-0 break-all text-sm font-semibold text-slate-800">${escapeHtml(formatPublicAddress(rule.hostname, rule.service, rule.managed && !management))}</h3><div class="min-w-0 text-sm leading-5 text-slate-600"><p class="break-all">→ ${escapeHtml(rule.service)}</p>${rule.path ? `<p class="mt-0.5 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}</div><span class="w-fit rounded bg-slate-100 px-2 py-1 text-xs text-slate-500">${rule.managed && !management ? ui.gateManaged : ui.externallyMaintained}</span></article>`;
+  return `<article class="grid min-w-0 gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 lg:grid-cols-[minmax(16rem,0.95fr)_minmax(0,1.4fr)_auto] lg:items-center lg:gap-x-4"><h3 class="min-w-0 break-all text-sm font-semibold text-slate-800">${renderWebAddress(formatPublicAddress(rule.hostname, rule.service, rule.managed && !management))}</h3><div class="min-w-0 text-sm leading-5 text-slate-600"><p class="break-all">→ ${renderWebAddress(rule.service)}</p>${rule.path ? `<p class="mt-0.5 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}</div><span class="w-fit rounded bg-slate-100 px-2 py-1 text-xs text-slate-500">${rule.managed && !management ? ui.gateManaged : ui.externallyMaintained}</span></article>`;
 }
 
 function renderManagedRoute(route) {
   const name = routeName(route);
   const title = escapeHtml(route.description?.trim() || ui.untitledRoute);
   const buttons = [{ action: 'edit', label: ui.editLabel, glyph: 'edit' }, { action: 'toggle', label: route.disabled ? ui.enableLabel : ui.disableLabel, glyph: route.disabled ? 'play' : 'pause' }, { action: 'delete', label: ui.deleteLabel, glyph: 'trash' }];
-  return `<article data-route-subdomain="${escapeHtml(route.subdomain)}" class="min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 ${route.disabled ? 'bg-slate-100 opacity-70 grayscale' : 'bg-white'}"><div class="flex min-w-0 items-start justify-between gap-3"><div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 lg:min-h-11"><h3 class="min-w-0 break-words text-sm font-semibold text-slate-900">${title}</h3><div class="flex flex-wrap gap-1.5 text-xs"><span class="rounded bg-slate-100 px-2 py-0.5 text-slate-600">${routeType(route) === 'tcp' ? 'TCP' : 'HTTP'} · ${routeType(route) === 'http' && !route.no_password ? ui.passwordProtection : ui.directConnection}</span><span class="rounded border px-2 py-0.5 ${getRouteStatusClass(route)}">${escapeHtml(getRouteStatusLabel(route))}</span></div></div><div class="ml-auto flex shrink-0 gap-1">${buttons.map(button => `<button type="button" data-action="${button.action}" data-subdomain="${escapeHtml(route.subdomain)}" title="${escapeHtml(button.label)}" aria-label="${escapeHtml(button.label)} ${escapeHtml(name)}" class="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:opacity-40">${icon(button.glyph)}</button>`).join('')}</div></div><div class="mt-1.5">${renderRoutePath(route)}</div><div data-route-feedback role="status" aria-live="polite" class="mt-2 empty:hidden"></div></article>`;
+  return `<article data-route-subdomain="${escapeHtml(route.subdomain)}" class="relative min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 ${route.disabled ? 'bg-slate-100 opacity-70' : 'bg-white'}"><div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 lg:min-h-11 lg:pr-40"><h3 class="min-w-0 break-words text-sm font-semibold text-slate-900">${title}</h3><div class="flex flex-wrap gap-1.5 text-xs"><span class="rounded bg-slate-100 px-2 py-0.5 text-slate-600">${routeType(route) === 'tcp' ? 'TCP' : 'HTTP'} · ${routeType(route) === 'http' && !route.no_password ? ui.passwordProtection : ui.directConnection}</span><span class="rounded border px-2 py-0.5 ${getRouteStatusClass(route)}">${escapeHtml(getRouteStatusLabel(route))}</span></div></div><div class="mt-2 lg:mt-1.5">${renderRoutePath(route)}</div><div class="mt-3 flex shrink-0 gap-1 lg:absolute lg:right-3 lg:top-2.5 lg:mt-0">${buttons.map(button => `<button type="button" data-action="${button.action}" data-subdomain="${escapeHtml(route.subdomain)}" title="${escapeHtml(button.label)}" aria-label="${escapeHtml(button.label)} ${escapeHtml(name)}" class="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:opacity-40">${icon(button.glyph)}</button>`).join('')}</div><div data-route-feedback role="status" aria-live="polite" class="mt-2 empty:hidden"></div></article>`;
 }
 
 function renderRoutes() {
@@ -540,6 +559,14 @@ function closeRouteModal() {
 function openSettingsModal(trigger) {
   openModal('settings-modal', trigger);
   document.getElementById('settings-current').focus();
+}
+
+function defaultRouteName(subdomain) {
+  return subdomain.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\b[a-z0-9]/g, letter => letter.toUpperCase());
+}
+
+function syncAutomaticName() {
+  document.getElementById('f-desc').value = defaultRouteName(document.getElementById('f-sub').value);
 }
 
 function resetRouteForm() {
@@ -670,6 +697,7 @@ document.getElementById('settings-form').addEventListener('submit', async event 
   finally { button.disabled = false; button.textContent = ui.settingsSave; }
 });
 if (new URL(location.href).searchParams.get('settings') === 'open') openSettingsModal(document.getElementById('settings-open'));
+document.getElementById('f-sub').addEventListener('input', syncAutomaticName);
 document.getElementById('route-form').addEventListener('input', clearFailedMutation);
 document.getElementById('route-form').addEventListener('change', clearFailedMutation);
 document.getElementById('route-list').addEventListener('click', event => {

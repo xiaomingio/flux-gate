@@ -11,7 +11,7 @@
   "targetIp": "Internal target IP",
   "port": "Target port",
   "descriptionOptional": "Name (optional)",
-  "descriptionPlaceholder": "For example, Agent Beat",
+  "descriptionPlaceholder": "e.g. NAS",
   "add": "Add",
   "update": "Update",
   "emptyRoutes": "No routes yet. Add one to get started.",
