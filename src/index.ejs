@@ -67,7 +67,7 @@
 
       <section class="min-w-0 rounded-3xl border border-slate-200/70 bg-slate-950 p-5 text-slate-50 shadow-soft sm:p-6">
         <div class="mb-5">
-          <h2 id="route-form-title" class="text-2xl font-semibold tracking-tight"><%= ui.addOrUpdateRoute %></h2>
+          <h2 id="route-form-title" class="text-2xl font-semibold tracking-tight"><%= ui.addRoute %></h2>
           <p id="route-form-subtitle" class="mt-2 text-sm leading-6 text-slate-300"><%= ui.addPanelDescription %></p>
         </div>
 
@@ -400,7 +400,7 @@ function resetRouteForm() {
   document.getElementById('f-enabled').checked = true;
   toggleAuthModeFields();
   toggleRouteTypeFields();
-  document.getElementById('route-form-title').textContent = ui.addOrUpdateRoute;
+  document.getElementById('route-form-title').textContent = ui.addRoute;
   document.getElementById('route-form-subtitle').textContent = ui.addPanelDescription;
   document.getElementById('route-submit-button').textContent = ui.add;
   document.getElementById('route-cancel-button').classList.add('hidden');
@@ -426,7 +426,7 @@ function editRoute(subdomain) {
   document.getElementById('f-enabled').checked = !Boolean(route.disabled);
   toggleAuthModeFields();
   toggleRouteTypeFields();
-  document.getElementById('route-form-title').textContent = ui.addOrUpdateRoute;
+  document.getElementById('route-form-title').textContent = ui.updateRoute;
   document.getElementById('route-form-subtitle').textContent = ui.editingRoute.replace('{route}', `${route.subdomain}.${baseDomain}`);
   document.getElementById('route-submit-button').textContent = ui.update;
   document.getElementById('route-cancel-button').classList.remove('hidden');
