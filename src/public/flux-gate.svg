@@ -1,0 +1,7 @@
+<!-- 文件说明: Flux Gate 统一品牌图标，用于 favicon 和管理页面。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Flux Gate</title>
+  <rect width="64" height="64" rx="16" fill="#020617"/>
+  <path d="M29 16H18v32h11" fill="none" stroke="#e2e8f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M29 32h20m-8-8 8 8-8 8" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

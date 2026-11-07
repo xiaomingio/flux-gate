@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const RouteConfig = require('./RouteConfig');
 const Route = require('./Route');
 const TunnelConfig = require('./TunnelConfig');
+const AdminAuth = require('./AdminAuth');
 
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '..', 'config.json');
 const LOCALES_DIR = path.join(__dirname, 'locales');
@@ -94,7 +95,7 @@ function parseCookies(req) {
   return header.split(';').reduce((acc, part) => {
     const [rawKey, ...rest] = part.trim().split('=');
     if (!rawKey) return acc;
-    acc[rawKey] = decodeURIComponent(rest.join('='));
+    try { acc[rawKey] = decodeURIComponent(rest.join('=')); } catch { /* Ignore malformed cookies. */ }
     return acc;
   }, {});
 }
@@ -130,7 +131,10 @@ function verifyBasicAuth(req, loadConfig, route = null) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Basic ')) return false;
   try {
-    const [user, pass] = Buffer.from(header.slice(6), 'base64').toString().split(':');
+    const decoded = Buffer.from(header.slice(6), 'base64').toString();
+    const separator = decoded.indexOf(':');
+    if (separator < 0) return false;
+    const user = decoded.slice(0, separator), pass = decoded.slice(separator + 1);
     return user === effectiveAuth.username && hashPassword(pass) === effectiveAuth.passwordHash;
   } catch {
     return false;
@@ -143,7 +147,9 @@ function sendBasicChallenge(res, realm, lang) {
 }
 
 function getSubdomain(req, baseDomain = '') {
-  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0].toLowerCase();
+  const peer = req.socket.remoteAddress || '';
+  const trusted = peer === '::1' || /^(?:::ffff:)?127\./.test(peer);
+  const host = (trusted && req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0].toLowerCase();
   const normalizedBaseDomain = String(baseDomain || '').toLowerCase();
 
   if (!host || host === normalizedBaseDomain || host === 'localhost') return null;
@@ -190,7 +196,9 @@ function createApp(options = {}) {
     operation: error.operationId ? runtime.operation(error.operationId) : null,
     routes: serialized(loadConfig()), tunnel: tunnel.status() });
 
+  const admin = new AdminAuth(store);
   const app = express();
+  app.set('trust proxy', 'loopback');
   app.set('view engine', 'ejs');
   app.set('views', __dirname);
 
@@ -243,18 +251,51 @@ function createApp(options = {}) {
     next();
   });
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-
+  app.use(express.json({ limit: '32kb' }));
+  app.use(express.urlencoded({ extended: false, limit: '32kb' }));
   app.use((req, res, next) => {
-    const currentConfig = loadConfig();
-    if (!verifyBasicAuth(req, loadConfig)) {
-      sendBasicChallenge(res, currentConfig.baseDomain || 'localhost', res.locals.lang);
-      return;
-    }
-
+    res.set('Cache-Control', 'no-store');
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Referrer-Policy', 'same-origin');
     next();
   });
+  app.get('/favicon.svg', (req, res) => res.sendFile(path.join(__dirname, 'public', 'flux-gate.svg')));
+  const renderLogin = (req, res, error = null) => res.render('login.ejs', {
+    error, next: AdminAuth.next(req.body?.next || req.query.next), csrfToken: res.locals.csrfToken,
+  });
+  app.get('/login', (req, res) => {
+    let session = admin.read(req);
+    if (session?.authenticated) return res.redirect(303, AdminAuth.next(req.query.next));
+    if (!session) session = admin.issue(req, res, false);
+    res.locals.csrfToken = session.csrfToken;
+    renderLogin(req, res);
+  });
+  app.post('/login', (req, res) => {
+    const session = admin.read(req);
+    res.locals.csrfToken = session?.csrfToken || '';
+    if (!admin.validWrite(req, session)) return res.status(403).send('Invalid login request; reload the login page');
+    const result = admin.login(req);
+    if (result !== 'ok') {
+      if (result === 'limited') res.set('Retry-After', '900');
+      res.status(result === 'limited' ? 429 : 401);
+      return renderLogin(req, res, translate(res.locals.lang, result === 'limited' ? 'loginRateLimited' : 'loginInvalid'));
+    }
+    admin.issue(req, res, true);
+    res.redirect(303, AdminAuth.next(req.body.next));
+  });
+  app.use((req, res, next) => {
+    const session = admin.read(req);
+    if (!session?.authenticated) {
+      if (req.path === '/api' || req.path.startsWith('/api/') || req.is('application/json')) return res.status(401).json({ error: 'Admin login required' });
+      return res.redirect(303, `/login?next=${encodeURIComponent(AdminAuth.next(req.originalUrl))}`);
+    }
+    res.locals.csrfToken = session.csrfToken;
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !admin.validWrite(req, session)) return res.status(403).json({ error: 'Invalid CSRF token or cross-origin write' });
+    next();
+  });
+  app.get('/api/session', (req, res) => res.json({ csrfToken: res.locals.csrfToken, username: loadConfig().auth.username }));
+  app.post('/logout', (req, res) => { admin.logout(req, res); res.redirect(303, '/login'); });
 
   app.get('/', (req, res) => {
     const currentConfig = loadConfig();
@@ -267,63 +308,27 @@ function createApp(options = {}) {
     });
   });
 
-  app.get('/settings', (req, res) => {
-    const currentConfig = loadConfig();
-    res.render('settings.ejs', {
-      error: null,
-      success: null,
-      baseDomain: currentConfig.baseDomain || 'localhost',
-      lang: res.locals.lang,
-      ui: res.locals.ui,
-      languageSwitchHref: res.locals.languageSwitchHref,
-    });
-  });
-
+  app.get('/settings', (req, res) => res.redirect(303, '/?settings=open'));
   app.post('/settings/password', async (req, res) => {
-    const { current, new_pass, confirm } = req.body;
+    const { current, new_pass, confirm } = req.body || {};
     const cfg = loadConfig();
-    const render = (error, success) => res.render('settings.ejs', {
-      error,
-      success,
-      baseDomain: cfg.baseDomain || 'localhost',
-      lang: res.locals.lang,
-      ui: res.locals.ui,
-      languageSwitchHref: res.locals.languageSwitchHref,
-    });
-
-    if (hashPassword(current) !== cfg.auth.password_hash) {
-      return render(translate(res.locals.lang, 'currentPasswordWrong'), null);
-    }
-    if (new_pass !== confirm) {
-      return render(translate(res.locals.lang, 'passwordMismatch'), null);
-    }
-    if ((new_pass || '').length < 4) {
-      return render(translate(res.locals.lang, 'passwordTooShort'), null);
-    }
-
-    await runtime.mutate((latest) => { latest.auth.password_hash = hashPassword(new_pass); });
-    return render(null, translate(res.locals.lang, 'passwordUpdated'));
+    const invalid = (key) => res.status(400).json({ error: translate(res.locals.lang, key) });
+    if (typeof current !== 'string' || hashPassword(current) !== cfg.auth.password_hash) return invalid('currentPasswordWrong');
+    if (new_pass !== confirm) return invalid('passwordMismatch');
+    if (typeof new_pass !== 'string' || new_pass.length < 4) return invalid('passwordTooShort');
+    try {
+      await runtime.mutate((latest) => {
+        if (latest.auth.password_hash !== cfg.auth.password_hash) throw Object.assign(new Error('Credentials changed; sign in again'), { status: 409 });
+        latest.auth.password_hash = hashPassword(new_pass);
+      });
+      admin.logout(req, res);
+      return res.json({ ok: true, redirect: '/login' });
+    } catch (error) { return res.status(error.status || 500).json({ error: error.message }); }
   });
 
   app.get('/api/routes', (req, res) => {
     const currentConfig = loadConfig();
     res.json(serialized(currentConfig));
-  });
-
-  app.use((req, res, next) => {
-    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-    // Same-origin fetches include Origin. Non-browser API callers may omit it.
-    if (req.headers.origin) {
-      try {
-        const origin = new URL(req.headers.origin);
-        if (origin.host !== req.headers.host || !['http:', 'https:'].includes(origin.protocol)) {
-          return res.status(403).json({ error: 'Cross-origin write rejected' });
-        }
-      } catch { return res.status(403).json({ error: 'Invalid Origin' }); }
-    } else if (req.headers['sec-fetch-site'] && req.headers['sec-fetch-site'] !== 'same-origin') {
-      return res.status(403).json({ error: 'Cross-origin write rejected' });
-    }
-    next();
   });
 
   app.get('/api/tunnel', (req, res) => res.json(tunnel.status()));

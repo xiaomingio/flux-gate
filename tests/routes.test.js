@@ -14,6 +14,7 @@ const childProcess = require('node:child_process');
 const { once } = require('node:events');
 const { createApp, hashPassword } = require('../src/server');
 const Route = require('../src/Route');
+const { login } = require('./AuthFixture.cjs');
 
 async function fixture(t, routes = []) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flux-routes-'));
@@ -23,12 +24,13 @@ async function fixture(t, routes = []) {
   const server = app.listen(0, '127.0.0.1'); await once(server, 'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
   const auth = `Basic ${Buffer.from('admin:secret').toString('base64')}`;
+  const sessionHeaders = await login(base);
   const request = async (method, url, body, headers = {}) => fetch(base + url, {
-    method, headers: { Authorization: auth, 'Content-Type': 'application/json', ...headers },
+    method, headers: { ...sessionHeaders, Authorization: auth, 'Content-Type': 'application/json', ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   t.after(async () => { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); });
-  return { app, server, configFile, request, base, auth };
+  return { app, server, configFile, request, base, auth, sessionHeaders };
 }
 async function save(request, route) {
   const response = await request('POST', '/api/routes', route);
@@ -288,7 +290,7 @@ test('automatic publications serialize queued mutations across config save and n
 });
 
 test('a disconnected write completes once and its persistent receipt confirms password-only changes', async (t) => {
-  const { app, request, server, configFile, auth } = await fixture(t);
+  const { app, request, server, configFile, sessionHeaders } = await fixture(t);
   await enableTunnel(t, app, configFile);
   const route = { subdomain: 'web', ip: '127.0.0.1', port: 3000, auth_mode: 'custom', username: 'user', password: 'first-secret' };
   await save(request, route);
@@ -303,7 +305,7 @@ test('a disconnected write completes once and its persistent receipt confirms pa
     return result;
   });
   const payload = JSON.stringify({ ...route, password: 'second-secret' });
-  const write = http.request({ host: '127.0.0.1', port: server.address().port, path: '/api/routes', method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), 'X-Flux-Gate-Operation': id } });
+  const write = http.request({ host: '127.0.0.1', port: server.address().port, path: '/api/routes', method: 'POST', headers: { ...sessionHeaders, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), 'X-Flux-Gate-Operation': id } });
   write.on('error', () => {}); write.end(payload);
   await restarting; write.destroy();
   let operation;

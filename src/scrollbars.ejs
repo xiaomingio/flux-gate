@@ -1,0 +1,49 @@
+<% /* 文件说明: 统一页面与弹窗的细滚动条、交互显隐及滚动锁定，不改变轨道占位。 */ %>
+<style>
+  html { overflow-y: auto; scrollbar-gutter: stable; }
+  html.modal-open { overflow: hidden; }
+  html, [data-scroll-region] { --scroll-thumb: transparent; scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+  html.scroll-active, [data-scroll-region].scroll-active { --scroll-thumb: #94a3b8; }
+  html::-webkit-scrollbar, [data-scroll-region]::-webkit-scrollbar { width: 4px; height: 4px; }
+  html::-webkit-scrollbar-track, [data-scroll-region]::-webkit-scrollbar-track { background: transparent; }
+  html::-webkit-scrollbar-thumb, [data-scroll-region]::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
+  @supports selector(::-webkit-scrollbar) {
+    html, [data-scroll-region] { scrollbar-width: auto; scrollbar-color: auto; }
+  }
+  dialog .modal-scroll { max-height: calc(100dvh - 2rem - 10px); overflow: auto; scrollbar-gutter: stable; margin: 4px; }
+  @media (forced-colors: active) {
+    html, [data-scroll-region] { scrollbar-color: auto; }
+    html::-webkit-scrollbar-thumb, [data-scroll-region]::-webkit-scrollbar-thumb { background: CanvasText; }
+  }
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const regions = [document.documentElement, ...document.querySelectorAll('[data-scroll-region]')];
+    const timers = new WeakMap();
+    let dragging = null;
+    function reveal(region) {
+      clearTimeout(timers.get(region));
+      region.classList.add('scroll-active');
+      if (dragging !== region) timers.set(region, setTimeout(() => region.classList.remove('scroll-active'), 900));
+    }
+    function nearTrack(region, event) {
+      const rect = region === document.documentElement ? { right: innerWidth, bottom: innerHeight, left: 0, top: 0 } : region.getBoundingClientRect();
+      const vertical = region.scrollHeight > region.clientHeight;
+      const horizontal = region.scrollWidth > region.clientWidth;
+      return event.clientX >= rect.left && event.clientY >= rect.top && event.clientX <= rect.right && event.clientY <= rect.bottom && (vertical && event.clientX >= rect.right - 18 || horizontal && event.clientY >= rect.bottom - 18);
+    }
+    for (const region of regions) {
+      (region === document.documentElement ? document : region).addEventListener('scroll', () => reveal(region), { passive: true });
+    }
+    document.addEventListener('pointermove', event => regions.forEach(region => { if (nearTrack(region, event)) reveal(region); }), { passive: true });
+    document.addEventListener('pointerdown', event => {
+      const region = [...regions].reverse().find(item => nearTrack(item, event));
+      if (region) { dragging = region; reveal(region); }
+    }, { passive: true });
+    document.addEventListener('pointerup', () => { const region = dragging; dragging = null; if (region) reveal(region); }, { passive: true });
+    document.addEventListener('pointercancel', () => { const region = dragging; dragging = null; if (region) reveal(region); }, { passive: true });
+    document.addEventListener('keydown', event => {
+      if (['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) reveal(document.activeElement?.closest('[data-scroll-region]') || document.documentElement);
+    });
+  });
+</script>

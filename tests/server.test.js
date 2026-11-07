@@ -8,6 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { login } = require('./AuthFixture.cjs');
 const { createApp, hashPassword } = require('../src/server');
 
 function createTestConfig(overrides = {}) {
@@ -49,9 +50,10 @@ async function withServer(fn, configOverrides = {}) {
 
   try {
     const port = server.address().port;
+    const sessionHeaders = await login(`http://127.0.0.1:${port}`, 'admin');
     await fn({
+      sessionHeaders,
       baseUrl: `http://127.0.0.1:${port}`,
-      authHeader: `Basic ${Buffer.from('admin:admin').toString('base64')}`,
       configPath,
     });
   } finally {
@@ -72,10 +74,10 @@ test('server loads translations from locale JSON files', async () => {
 });
 
 test('GET / supports English via lang query and sets locale cookie', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
+  await withServer(async ({ baseUrl, sessionHeaders }) => {
     const response = await fetch(`${baseUrl}/?lang=en`, {
       headers: {
-        Authorization: authHeader,
+        ...sessionHeaders,
       },
       redirect: 'manual',
     });
@@ -92,10 +94,10 @@ test('GET / supports English via lang query and sets locale cookie', async () =>
 });
 
 test('GET / renders Flux Gate branding and dashboard hero in Chinese', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
+  await withServer(async ({ baseUrl, sessionHeaders }) => {
     const response = await fetch(baseUrl, {
       headers: {
-        Authorization: authHeader,
+        ...sessionHeaders,
       },
     });
 
@@ -107,29 +109,19 @@ test('GET / renders Flux Gate branding and dashboard hero in Chinese', async () 
   });
 });
 
-test('GET /settings renders English when locale cookie is present', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
-    const response = await fetch(`${baseUrl}/settings`, {
-      headers: {
-        Authorization: authHeader,
-        Cookie: 'lang=en',
-      },
-    });
-
-    assert.equal(response.status, 200);
-    const html = await response.text();
-
-    assert.match(html, /Change Password/);
-    assert.match(html, /Back to Dashboard/);
-    assert.doesNotMatch(html, /修改密码/);
+test('GET /settings redirects authenticated users to the dashboard settings dialog', async () => {
+  await withServer(async ({ baseUrl, sessionHeaders }) => {
+    const response = await fetch(`${baseUrl}/settings`, { headers: sessionHeaders, redirect: 'manual' });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get('location'), '/?settings=open');
   });
 });
 
 test('GET / renders English auth labels when locale cookie is present', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
+  await withServer(async ({ baseUrl, sessionHeaders }) => {
     const response = await fetch(`${baseUrl}/?lang=en`, {
       headers: {
-        Authorization: authHeader,
+        ...sessionHeaders,
       },
     });
 
@@ -143,11 +135,11 @@ test('GET / renders English auth labels when locale cookie is present', async ()
 });
 
 test('POST /api/routes persists per-route auth, no-password, and disabled state', async () => {
-  await withServer(async ({ baseUrl, authHeader, configPath }) => {
+  await withServer(async ({ baseUrl, sessionHeaders, configPath }) => {
     const response = await fetch(`${baseUrl}/api/routes`, {
       method: 'POST',
       headers: {
-        Authorization: authHeader,
+        ...sessionHeaders,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -245,13 +237,13 @@ test('direct and disabled routes are not proxied by Gate', async () => {
 });
 
 test('POST /api/routes returns translated validation error in English', async () => {
-  await withServer(async ({ baseUrl, authHeader }) => {
+  await withServer(async ({ baseUrl, sessionHeaders }) => {
     const response = await fetch(`${baseUrl}/api/routes`, {
       method: 'POST',
       headers: {
-        Authorization: authHeader,
+        ...sessionHeaders,
         'Content-Type': 'application/json',
-        Cookie: 'lang=en',
+        Cookie: sessionHeaders.Cookie + '; lang=en',
       },
       body: JSON.stringify({ subdomain: '', ip: '', port: '' }),
     });

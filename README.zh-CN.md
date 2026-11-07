@@ -31,7 +31,7 @@ Flux Gate 可以帮你：
 | HTTP 直连 | Cloudflare → cloudflared → 目标 |
 | TCP 直连 | Cloudflare 客户端 → Cloudflare → cloudflared → 目标 |
 
-保存、启用、暂停和删除会自动同步业务 Tunnel，同步完成后才提示成功。直连服务使用自身的认证。配置与发布流程见 [路由与 Tunnel 发布](docs/tcp-forwarding.md)。
+保存、启用、暂停和删除会自动同步业务 Tunnel，同步完成后才确认公网生效；未配置业务 Tunnel 时只保存本地配置，界面显示“未配置业务 Tunnel”。直连服务使用自身的认证。配置与发布流程见 [路由与 Tunnel 发布](docs/tcp-forwarding.md)。
 
 公网 `https://demo.example.com` 可以转发到内网 `http://192.168.1.10:3000`。Cloudflare 管理公网证书并终止浏览器 TLS，与 cloudflared 通过加密 Tunnel 通信。Flux Gate 当前固定使用 `http://` 连接 Web 目标，目前不支持 HTTPS origin；内部 HTTP 段不会自动变成 TLS，也不需要本机证书。
 
@@ -77,7 +77,7 @@ cp config.sample.json config.json
 字段说明：
 - `port`：管理后台端口
 - `baseDomain`：Cloudflare 管理的主域名
-- `auth.username`：登录用户名
+- `auth.username`：管理端表单登录用户名，同时作为 HTTP 密码保护路由的默认凭据
 - `auth.password_hash`：密码的 SHA256 哈希；留空时首次启动默认 `admin/admin`
 - `routes`：子域名转发规则列表
 - `routes[].username` / `routes[].password_hash`：成对的 HTTP 自定义凭据；均不填时使用默认凭据。界面/API 保存自定义认证时，两项必填；编辑时也需重新填写密码。
@@ -105,6 +105,14 @@ pm2 save
 ```
 
 接线指南包含两个独立 cloudflared 进程、凭据、DNS、自动同步和恢复步骤。真实凭据仅保留在部署主机。
+
+## 使用管理面板
+
+页面顶部保留产品介绍，下方为业务转发和管理入口两张规则卡片。业务转发由 Gate 管理，每条路由只显示一次，同时展示实际 Tunnel 状态。管理入口及其他非 Gate 管理的规则保持只读。
+
+添加和编辑路由都在弹窗中完成。设置图标打开修改密码弹窗，修改成功后需重新登录；退出前会确认。地球图标打开中英文菜单。旧 `/settings` 地址仅跳转到 `/?settings=open`，打开同一设置弹窗。
+
+管理端通过 `/login` 表单登录，服务端会话固定有效 30 天，重启保留。退出或变更凭据后提前失效。管理 API 写入需要会话 Cookie 和 CSRF 令牌。转发服务继续使用独立的 HTTP Basic Auth。存储、可信代理及 API 用法见[管理端登录](docs/admin-auth.md)。
 
 ## 默认账号
 
@@ -135,7 +143,7 @@ Flux Gate 会把内网服务发布到公网。
 4. 目标服务是否真的在运行
 
 ### 怎么添加新路由？
-打开管理后台，填写子域名 / IP / 端口并保存即可。你也可以为单个转发项设置独立用户名密码、开启无密码访问，或者直接停用该转发项。所有模式的修改都会自动保存并同步。Tunnel 重载断线时，界面只读核验原操作回执；已确认回退的失败可明确重试。
+登录管理后台，打开添加路由弹窗，填写子域名 / IP / 端口并保存即可。你也可以为单个转发项设置独立用户名密码、开启无密码访问，或者直接停用该转发项。所有模式的修改都会自动保存并同步。Tunnel 重载断线时，界面只读核验原操作回执；已确认回退的失败可明确重试。
 
 ## License
 

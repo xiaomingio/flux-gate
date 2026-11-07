@@ -55,7 +55,7 @@ HTTP 直连 ingress 设置 `originRequest.httpHostHeader` 为目标的 `host:por
 
 业务域名和通配 DNS 必须指向业务 Tunnel。配置中的受管片段位于 `# BEGIN FLUX GATE ROUTES` 与 `# END FLUX GATE ROUTES` 之间。管理域名、通配规则、独立 SSH 恢复入口和其他区块外内容会保留。显式 hostname 与区块外规则冲突时停止发布。
 
-停用路由会生成该 hostname 的 `http_status:404` 规则；删除或改名后的受管 hostname 也保留为 404，避免被通配规则重新开放。需要重新使用域名时创建同名路由即可替换阻断规则。
+当前本地配置型 Tunnel 的 ingress 没有单条 `disabled` 字段。暂停时保留本地路由的目标和认证配置，生成该 hostname 的 `http_status:404` 规则；恢复使用本地保存的配置，不能仅凭 Tunnel 中的 404 反推出原目标或凭据。删除或改名后的受管 hostname 也保留为 404，避免被通配规则重新开放。需要重新使用域名时创建同名路由即可替换阻断规则。
 
 ## 自动同步
 

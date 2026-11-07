@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title><%= ui.projectName %> · <%= ui.proxyManager %></title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -28,201 +30,201 @@
     #f-port::-webkit-inner-spin-button,
     #f-port::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   </style>
+  <%- include('scrollbars.ejs') %>
+  <%- include('password-visibility.ejs') %>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
   <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-    <header class="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200/70 bg-white/90 p-4 shadow-soft backdrop-blur sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-          <%= ui.heroBadge %>
+    <header class="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-3">
+          <img src="/favicon.svg" width="44" height="44" alt="" class="h-11 w-11 shrink-0 rounded-lg">
+          <div class="min-w-0"><p class="text-xs font-medium uppercase tracking-widest text-slate-400"><%= ui.dashboardTitle %></p><h1 class="text-xl sm:text-2xl font-semibold tracking-tight"><%= ui.projectName %></h1></div>
         </div>
-        <div class="mt-4 flex items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-lg text-white shadow-lg shadow-slate-900/10">⚡</div>
-          <div>
-            <p class="text-sm font-medium uppercase tracking-[0.24em] text-slate-400"><%= ui.dashboardTitle %></p>
-            <h1 class="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl"><%= ui.projectName %></h1>
-          </div>
-        </div>
-        <p class="mt-4 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl"><%= ui.heroSubtitle %></p>
-        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base"><%= ui.heroDescription %></p>
+        <nav aria-label="<%= ui.pageActions %>" class="flex shrink-0 items-center gap-1">
+          <%- include('language-menu.ejs') %>
+          <button id="settings-open" type="button" title="<%= ui.settings %>" aria-label="<%= ui.settings %>" onclick="openSettingsModal(this)" class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%- include('icons.ejs', { name: 'settings' }) %></button>
+          <button id="logout-open" type="button" title="<%= ui.logout %>" aria-label="<%= ui.logout %>" onclick="openModal('logout-modal', this)" class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%- include('icons.ejs', { name: 'logout' }) %></button>
+        </nav>
       </div>
-
-      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-        <a href="<%= languageSwitchHref %>" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">🌍 <%= ui.switchLanguage %></a>
-        <a href="/settings<%= lang === 'en' ? '?lang=en' : '' %>" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-slate-900/10 transition hover:bg-slate-800">⚙️ <%= ui.settings %></a>
-      </div>
+      <p class="mt-5 text-xl font-semibold tracking-tight sm:text-2xl"><%= ui.heroSubtitle %></p>
+      <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600"><%= ui.heroDescription %></p>
     </header>
-
-    <main class="grid gap-6 min-w-0 xl:grid-cols-[1.35fr_0.95fr]">
-      <section class="min-w-0 rounded-3xl border border-slate-200/70 bg-white p-5 shadow-soft sm:p-6">
-        <div class="mb-5">
-          <div class="flex flex-wrap items-center gap-3">
-            <h2 class="text-2xl font-semibold tracking-tight text-slate-950"><%= ui.allRoutes %></h2>
-            <div class="flex flex-wrap gap-2 text-xs font-medium">
-              <span id="route-count-badge" class="rounded-full bg-slate-100 px-3 py-1 text-slate-600"></span>
-              <span id="enabled-count-badge" class="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700"></span>
-            </div>
-          </div>
-          <p class="mt-3 text-sm leading-6 text-slate-500"><%= ui.routeListDescription %></p>
-        </div>
-        <div id="tunnel-panel" class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4" aria-live="polite"></div>
-        <div id="route-list"></div>
+    <main class="grid min-w-0 gap-6">
+      <section id="business-card" class="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+        <h2 class="text-xl font-semibold tracking-tight"><%= ui.forwardingTunnel %></h2>
+        <div id="tunnel-panel" class="mt-3" aria-live="polite"></div>
+        <div id="route-feedback" role="status" aria-live="polite" class="mt-3"></div>
+        <div id="route-list" class="mt-4"></div>
+        <button id="route-add" type="button" onclick="openRouteModal(this)" class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><span aria-hidden="true">+</span><%= ui.addRouteAction %></button>
       </section>
-
-      <section class="min-w-0 rounded-3xl border border-slate-200/70 bg-slate-950 p-5 text-slate-50 shadow-soft sm:p-6">
-        <div class="mb-5">
-          <h2 id="route-form-title" class="text-2xl font-semibold tracking-tight"><%= ui.addRoute %></h2>
-          <p id="route-form-subtitle" class="mt-2 text-sm leading-6 text-slate-300"><%= ui.addPanelDescription %></p>
-        </div>
-
-        <form class="grid min-w-0 gap-4" onsubmit="saveRoute(event)">
+      <section id="management-card" class="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+        <h2 class="text-xl font-semibold tracking-tight"><%= ui.managementTunnel %></h2>
+        <div id="management-status" class="mt-3 text-sm leading-6 text-slate-500"></div>
+        <div id="management-rules" class="mt-4"></div>
+      </section>
+    </main>
+  </div>
+  <dialog id="route-modal" aria-labelledby="route-form-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl backdrop:bg-slate-950/40 overflow-hidden p-0">
+    <div class="modal-scroll p-5 sm:p-6" data-scroll-region>
+    <div class="mb-5 flex items-start justify-between gap-3">
+      <div><h2 id="route-form-title" class="text-2xl font-semibold tracking-tight"><%= ui.addRoute %></h2><p id="route-form-subtitle" class="mt-2 text-sm leading-6 text-slate-500"><%= ui.addPanelDescription %></p></div>
+      <button type="button" aria-label="<%= ui.close %>" title="<%= ui.close %>" onclick="closeRouteModal()" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-2xl text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">×</button>
+    </div>
+<form id="route-form" class="grid min-w-0 gap-4" onsubmit="saveRoute(event)">
           <input type="hidden" id="f-original-subdomain">
 
           <fieldset class="min-w-0">
-            <legend class="mb-2 block text-sm font-medium text-slate-200"><%= ui.routeMode %></legend>
-            <div class="flex gap-1.5 rounded-2xl border border-slate-700 bg-slate-900/70 p-1.5">
+            <legend class="mb-2 block text-sm font-medium text-slate-700"><%= ui.routeMode %></legend>
+            <div class="flex gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5">
               <label class="min-w-0 flex-1 cursor-pointer">
                 <input type="radio" name="route_mode" id="f-mode-protected" value="protected" checked class="peer sr-only">
-                <span class="block rounded-xl px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">HTTP</span><span class="block text-xs"><%= ui.passwordProtection %></span></span>
+                <span class="block rounded-lg px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-600 transition hover:bg-slate-100 peer-checked:bg-slate-950 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">HTTP</span><span class="block text-xs"><%= ui.passwordProtection %></span></span>
               </label>
               <label class="min-w-0 flex-1 cursor-pointer">
                 <input type="radio" name="route_mode" id="f-mode-http-direct" value="http-direct" class="peer sr-only">
-                <span class="block rounded-xl px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">HTTP</span><span class="block text-xs"><%= ui.directConnection %></span></span>
+                <span class="block rounded-lg px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-600 transition hover:bg-slate-100 peer-checked:bg-slate-950 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">HTTP</span><span class="block text-xs"><%= ui.directConnection %></span></span>
               </label>
               <label class="min-w-0 flex-1 cursor-pointer">
                 <input type="radio" name="route_mode" id="f-mode-tcp-direct" value="tcp-direct" class="peer sr-only">
-                <span class="block rounded-xl px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-300 transition hover:bg-slate-800 peer-checked:bg-white peer-checked:text-slate-950 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">TCP</span><span class="block text-xs"><%= ui.directConnection %></span></span>
+                <span class="block rounded-lg px-2 py-2.5 text-center text-sm font-semibold leading-5 text-slate-600 transition hover:bg-slate-100 peer-checked:bg-slate-950 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400"><span class="block">TCP</span><span class="block text-xs"><%= ui.directConnection %></span></span>
               </label>
             </div>
           </fieldset>
           <div id="route-flow" class="grid min-w-0 gap-2">
-            <div class="min-w-0 rounded-2xl border border-slate-700 bg-slate-900/60 p-3">
-              <label for="f-sub" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.publicAddress %></label>
+            <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <label for="f-sub" class="mb-2 block text-sm font-medium text-slate-700"><%= ui.publicAddress %></label>
             <div class="flex min-w-0 items-baseline">
-              <span id="f-sub-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-400" aria-hidden="true">https://</span>
-              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 pt-1 pb-0.5 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
-              <span class="inline-flex shrink-0 items-center px-4 text-sm font-medium text-slate-400">.<%= baseDomain %></span>
+              <span id="f-sub-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-500" aria-hidden="true">https://</span>
+              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-300 bg-transparent px-3 pt-1 pb-0.5 text-base text-slate-950 placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <span class="inline-flex shrink-0 items-center px-4 text-sm font-medium text-slate-500">.<%= baseDomain %></span>
             </div>
             </div>
             <div class="text-center text-slate-500" aria-hidden="true">↓</div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
-              <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span class="font-medium">Cloudflare</span><span id="cloudflare-access-note" class="text-xs text-slate-400"><%= ui.cloudflareHttp %></span></div>
+            <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span class="font-medium">Cloudflare</span><span id="cloudflare-access-note" class="text-xs text-slate-500"><%= ui.cloudflareHttp %></span></div>
             </div>
             <div class="text-center text-slate-500" aria-hidden="true">↓</div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
-              <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span class="font-medium">Cloudflare Tunnel</span><span class="text-xs text-slate-400"><%= ui.tunnelEncryption %></span></div>
+            <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span class="font-medium">Cloudflare Tunnel</span><span class="text-xs text-slate-500"><%= ui.tunnelEncryption %></span></div>
             </div>
-            <fieldset id="http-auth-fields" class="grid min-w-0 gap-2 text-sm text-slate-200">
+            <fieldset id="http-auth-fields" class="grid min-w-0 gap-2 text-sm text-slate-700">
               <legend class="sr-only"><%= ui.passwordProtection %></legend>
               <div class="text-center text-slate-500" aria-hidden="true">↓</div>
-              <div id="gate-node" class="grid min-w-0 gap-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 p-3">
-                <div class="flex flex-wrap items-center justify-between gap-2"><span class="font-medium">Gate</span><span class="rounded-full bg-sky-500/15 px-2 py-1 text-xs text-sky-200"><%= ui.passwordProtection %></span></div>
+              <div id="gate-node" class="grid min-w-0 gap-3 rounded-lg border border-sky-500/40 bg-sky-50 p-3">
+                <div class="flex flex-wrap items-center justify-between gap-2"><span class="font-medium">FluxGate</span><span class="rounded bg-sky-500/15 px-2 py-1 text-xs text-sky-700"><%= ui.basicAuthProtection %></span></div>
                 <div class="grid gap-3">
                   <label class="flex items-start gap-3">
-                    <input type="radio" id="auth-mode-default" name="auth_mode" value="default" checked class="h-4 w-4 border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
+                    <input type="radio" id="auth-mode-default" name="auth_mode" value="default" checked class="h-4 w-4 border-slate-300 bg-white text-sky-500 focus:ring-sky-400/20">
                     <span><%= ui.authDefaultFormLabel %></span>
                   </label>
                   <label class="flex items-start gap-3">
-                    <input type="radio" id="auth-mode-custom" name="auth_mode" value="custom" class="h-4 w-4 border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
+                    <input type="radio" id="auth-mode-custom" name="auth_mode" value="custom" class="h-4 w-4 border-slate-300 bg-white text-sky-500 focus:ring-sky-400/20">
                     <span><%= ui.authCustomLabel %></span>
                   </label>
                 </div>
             <div id="custom-auth-fields" class="hidden grid gap-4 sm:grid-cols-2">
               <div>
-                <label for="f-username" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.customUsername %></label>
-                <input name="username" id="f-username" autocomplete="off" disabled placeholder="alice" class="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+                <label for="f-username" class="mb-2 block text-sm font-medium text-slate-700"><%= ui.customUsername %></label>
+                <input name="username" id="f-username" autocomplete="off" disabled placeholder="alice" class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
               </div>
               <div>
-                <label for="f-password" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.customPassword %></label>
-                <input name="password" id="f-password" type="password" autocomplete="new-password" disabled placeholder="••••••••" class="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+                <label for="f-password" class="mb-2 block text-sm font-medium text-slate-700"><%= ui.customPassword %></label>
+                <input name="password" id="f-password" type="password" autocomplete="new-password" disabled placeholder="••••••••" class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
               </div>
             </div>
               </div>
             </fieldset>
             <div class="text-center text-slate-500" aria-hidden="true">↓</div>
-            <div class="min-w-0 rounded-2xl border border-slate-700 bg-slate-900/60 p-3">
+            <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p class="mb-2 text-sm font-medium"><%= ui.targetAddress %></p>
             <div class="sr-only">
               <label for="f-ip"><%= ui.targetIp %></label>
               <label for="f-port"><%= ui.port %></label>
             </div>
             <div class="flex min-w-0 items-baseline">
-              <span id="f-target-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-400" aria-hidden="true">http://</span>
-              <input name="ip" id="f-ip" placeholder="<%= ui.targetHostPlaceholder %>" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 pt-1 pb-0.5 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
-              <span class="inline-flex shrink-0 items-center px-2 text-slate-400" aria-hidden="true">:</span>
-              <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 pt-1 pb-0.5 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <span id="f-target-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-500" aria-hidden="true">http://</span>
+              <input name="ip" id="f-ip" placeholder="<%= ui.targetHostPlaceholder %>" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-300 bg-transparent px-3 pt-1 pb-0.5 text-base text-slate-950 placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <span class="inline-flex shrink-0 items-center px-2 text-slate-500" aria-hidden="true">:</span>
+              <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-x-0 border-t-0 border-b border-slate-300 bg-transparent px-3 pt-1 pb-0.5 text-base text-slate-950 placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
             </div>
             </div>
           </div>
           <div class="min-w-0">
-            <label for="f-desc" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.descriptionOptional %></label>
-            <input name="description" id="f-desc" placeholder="<%= ui.descriptionPlaceholder %>" class="w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+            <label for="f-desc" class="mb-2 block text-sm font-medium text-slate-700"><%= ui.descriptionOptional %></label>
+            <input name="description" id="f-desc" placeholder="<%= ui.descriptionPlaceholder %>" class="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-3 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
           </div>
-          <p id="no-password-warning" role="note" class="hidden rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300"><%= ui.noPasswordWarning %></p>
-          <p id="tcp-security-warning" role="note" class="hidden rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300"><%= ui.tcpSecurityWarning %></p>
-          <label class="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-200">
-            <input type="checkbox" id="f-enabled" name="enabled" checked class="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-400/20">
+          <p id="no-password-warning" role="note" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-700"><%= ui.noPasswordWarning %></p>
+          <p id="tcp-security-warning" role="note" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-700"><%= ui.tcpSecurityWarning %></p>
+          <label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <input type="checkbox" id="f-enabled" name="enabled" checked class="h-4 w-4 rounded border-slate-300 bg-white text-sky-500 focus:ring-sky-400/20">
             <span><%= ui.startRouteLabel %></span>
           </label>
           <div class="flex flex-col gap-3 sm:flex-row">
-            <button id="route-submit-button" type="submit" class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"><%= ui.add %></button>
-            <button id="route-cancel-button" type="button" onclick="resetRouteForm()" class="hidden inline-flex items-center justify-center rounded-2xl border border-slate-700 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-900"><%= ui.cancelEdit %></button>
+            <button id="route-submit-button" type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"><%= ui.add %></button>
+            <button id="route-cancel-button" type="button" onclick="closeRouteModal()" class="hidden inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><%= ui.cancelEdit %></button>
           </div>
         </form>
-
-        <div id="form-msg" role="status" aria-live="polite" class="mt-4"></div>
-      </section>
-    </main>
-  </div>
-
+    <div id="form-msg" role="status" aria-live="polite" class="mt-4"></div>
+    </div>
+  </dialog>
+  <dialog id="settings-modal" aria-labelledby="settings-modal-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl backdrop:bg-slate-950/40 overflow-hidden p-0">
+    <div class="modal-scroll p-5 sm:p-6" data-scroll-region>
+    <div class="mb-5 flex items-start justify-between gap-3"><h2 id="settings-modal-title" class="text-2xl font-semibold tracking-tight"><%= ui.changePassword %></h2><button type="button" aria-label="<%= ui.close %>" title="<%= ui.close %>" onclick="document.getElementById('settings-modal').close()" class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-2xl text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">×</button></div>
+    <form id="settings-form" method="POST" action="/settings/password" class="grid gap-4">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% for (const field of [{name:'current',label:ui.currentPassword,autocomplete:'current-password'}, {name:'new_pass',label:ui.newPassword,autocomplete:'new-password'}, {name:'confirm',label:ui.confirmPassword,autocomplete:'new-password'}]) { %>
+      <div><label for="settings-<%= field.name %>" class="mb-2 block text-sm font-medium text-slate-700"><%= field.label %></label><input id="settings-<%= field.name %>" name="<%= field.name %>" type="password" autocomplete="<%= field.autocomplete %>" required class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"></div>
+      <% } %>
+      <div id="settings-msg" role="status" class="text-sm text-red-700"></div>
+      <button id="settings-submit" type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%= ui.settingsSave %></button>
+    </form>
+    </div>
+  </dialog>
+  <dialog id="logout-modal" aria-labelledby="logout-title" class="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl backdrop:bg-slate-950/40 overflow-hidden p-0">
+    <div class="modal-scroll p-5 sm:p-6" data-scroll-region>
+    <h2 id="logout-title" class="text-xl font-semibold"><%= ui.logout %></h2><p class="mt-3 text-sm leading-6 text-slate-600"><%= ui.logoutConfirm %></p>
+    <form method="POST" action="/logout" class="mt-6 flex justify-end gap-3" onsubmit="this.querySelector('button[type=submit]').disabled=true">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="button" onclick="document.getElementById('logout-modal').close()" autofocus class="min-h-11 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><%= ui.cancel %></button>
+      <button type="submit" class="min-h-11 rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><%= ui.logout %></button>
+    </form>
+    </div>
+  </dialog>
 <script>
 const baseDomain = <%- JSON.stringify(baseDomain).replace(/</g, '\\u003c') %>;
 const ui = <%- JSON.stringify(ui).replace(/</g, '\\u003c') %>;
+const csrfToken = <%- JSON.stringify(csrfToken).replace(/</g, '\\u003c') %>;
 const routes = <%- JSON.stringify(routes).replace(/</g, '\\u003c') %>;
 let mutationPending = false;
 let tunnelState = null;
 let unconfirmedOperation = null;
 let failedMutation = null;
+let operationContext = null;
 
-function renderTunnelStatus() {
-  const panel = document.getElementById('tunnel-panel');
-  const state = tunnelState;
-  const existingOpen = document.getElementById('existing-tunnel-rules')?.open || false;
-  const status = mutationPending && !unconfirmedOperation ? ui.routeSyncing : !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
-  panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="font-semibold text-slate-900">${ui.tunnelTitle}</h3><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : 'text-slate-600'}">${status}</span></div>
-    ${state?.changes?.length ? `<ul class="mt-3 grid gap-3 text-xs text-slate-700">${state.changes.filter(change => change.status !== 'applied' && change.status !== 'disabled').map(change => `<li class="grid gap-1 border-t border-slate-200 pt-2"><span class="break-all font-medium">${escapeHtml(formatPublicAddress(change.hostname, change.desired_service, true))}</span><span class="break-all">${ui.currentPath}: ${escapeHtml(state.current_verified ? change.current_service || pathLabel(change.current_path) : ui.currentUnknown)}</span><span class="break-all text-amber-800">${ui.desiredPath}: ${escapeHtml(change.desired_service || pathLabel(change.desired_path))}</span></li>`).join('')}</ul>` : ''}
-    ${state ? renderExistingRules(state, existingOpen) : ''}
-    ${state?.error ? `<p class="mt-3 break-words text-sm text-red-700">${escapeHtml(state.error)}</p>` : ''}
-    ${state?.status === 'disabled' ? `<p class="mt-3 text-sm leading-6 text-slate-600">${ui.tunnelManualHint}</p>` : ''}
-    <button type="button" id="tunnel-refresh-button" class="mt-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${ui.refreshStatus}</button>`;
-  document.getElementById('tunnel-refresh-button').addEventListener('click', refreshPublicationStatus);
+function managementFetch(url, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  return fetch(url, { ...options, headers: { ...options.headers, ...(!['GET', 'HEAD'].includes(method) ? { 'X-CSRF-Token': csrfToken } : {}) } });
 }
 
-function renderExistingRules(state, open) {
-  const inventories = Array.isArray(state.inventories) ? state.inventories : [];
-  const rules = inventories.flatMap(inventory => inventory.existing_rules || []);
-  const count = ui.existingRulesCount.replace('{count}', String(rules.length)).replace('{external}', String(rules.filter(rule => !rule.managed).length));
-  const groups = inventories.map(inventory => {
-    const title = inventory.kind === 'management' ? ui.managementTunnel : ui.forwardingTunnel;
-    const entries = Array.isArray(inventory.existing_rules) ? inventory.existing_rules : [];
-    const content = inventory.existing_rules_error
-      ? `<p class="mt-2 break-words text-sm text-red-700">${escapeHtml(inventory.existing_rules_error)}</p>`
-      : `<p class="mt-2 text-xs leading-5 text-slate-500">${inventory.current_verified ? ui.configurationVerified : ui.configurationUnverified}</p>${entries.length ? `<ul class="existing-tunnel-rule-list mt-3 grid gap-2">${entries.map(rule => `<li data-managed="${Boolean(rule.managed && !inventory.read_only)}" class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><div class="flex flex-wrap items-start justify-between gap-2"><span class="min-w-0 break-all font-mono text-xs font-medium text-slate-800">${escapeHtml(formatPublicAddress(rule.hostname, rule.service, rule.managed && !inventory.read_only))}</span><span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${rule.managed && !inventory.read_only ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}">${rule.managed && !inventory.read_only ? ui.gateManaged : ui.externallyMaintained}</span></div>${rule.path ? `<p class="mt-1 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}<p class="mt-1 break-all font-mono text-xs leading-5 text-slate-700">→ ${escapeHtml(rule.service)}</p></li>`).join('')}</ul>` : `<p class="mt-2 text-sm text-slate-500">${ui.noExistingRules}</p>`}`;
-    return `<section data-inventory-kind="${inventory.kind === 'management' ? 'management' : 'forwarding'}" class="min-w-0 border-t border-slate-200 pt-3"><h4 class="flex flex-wrap items-baseline gap-2 text-sm font-semibold text-slate-800">${title}</h4>${content}</section>`;
-  }).join('');
-  return `<details id="existing-tunnel-rules" class="mt-3 border-t border-slate-200 pt-3"${open ? ' open' : ''}><summary class="cursor-pointer rounded text-sm font-medium text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-sky-500">${ui.existingRulesTitle}<span class="ml-2 text-xs font-normal text-slate-500">${escapeHtml(count)}</span></summary><div class="mt-3 grid gap-4">${groups || `<p class="text-sm text-slate-500">${ui.tunnelLoadFailed}</p>`}</div><p class="mt-3 text-xs leading-5 text-slate-500">${ui.externalRulesReadOnly}</p></details>`;
+function renderTunnelStatus() {
+  const state = tunnelState;
+  const status = mutationPending ? ui.routeSaving : !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
+  const primary = state?.inventories?.find(inventory => inventory.kind === 'forwarding');
+  document.getElementById('tunnel-panel').innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : state?.status === 'applied' ? 'text-emerald-700' : 'text-slate-500'}">${escapeHtml(status)}</span><button type="button" id="tunnel-refresh-button" class="min-h-11 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${ui.refreshStatus}</button></div>${primary?.existing_rules_error || state?.error ? `<p class="mt-2 break-words text-sm text-red-700">${escapeHtml(primary?.existing_rules_error || state.error)}</p>` : ''}`;
+  document.getElementById('tunnel-refresh-button').addEventListener('click', refreshPublicationStatus);
 }
 
 async function loadTunnelStatus() {
   try {
-    const response = await fetch('/api/tunnel');
+    const response = await managementFetch('/api/tunnel');
     if (!response.ok) throw new Error(response.status === 401 ? ui.relogin : ui.tunnelLoadFailed);
     const data = await response.json();
     if (typeof data.enabled !== 'boolean' || !Array.isArray(data.rules)) throw new Error(ui.tunnelLoadFailed);
     tunnelState = data;
   } catch (error) { tunnelState = { enabled: false, status: 'error', rules: [], error: error.message || ui.tunnelLoadFailed }; }
   renderTunnelStatus();
+  renderRoutes();
 }
 
 function acceptPublication(data) {
@@ -234,7 +236,7 @@ function acceptPublication(data) {
 }
 
 async function readPublication() {
-  const [routeResponse, tunnelResponse] = await Promise.all([fetch('/api/routes', { cache: 'no-store' }), fetch('/api/tunnel', { cache: 'no-store' })]);
+  const [routeResponse, tunnelResponse] = await Promise.all([managementFetch('/api/routes', { cache: 'no-store' }), managementFetch('/api/tunnel', { cache: 'no-store' })]);
   if (routeResponse.status === 401 || tunnelResponse.status === 401) throw new Error(ui.relogin);
   if (!routeResponse.ok || !tunnelResponse.ok) throw new Error(ui.routeLoadFailed);
   const [routeData, tunnelData] = await Promise.all([routeResponse.json(), tunnelResponse.json()]);
@@ -243,7 +245,7 @@ async function readPublication() {
 }
 
 async function readOperation(id) {
-  const response = await fetch(`/api/operations/${encodeURIComponent(id)}`, { cache: 'no-store' });
+  const response = await managementFetch(`/api/operations/${encodeURIComponent(id)}`, { cache: 'no-store' });
   if (response.status === 401) throw new Error(ui.relogin);
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(ui.syncUnconfirmed);
@@ -262,6 +264,7 @@ function checkOperation(operation) {
 }
 
 async function recoverOperation(id, complete, snapshot) {
+  unconfirmedOperation = { id, complete, snapshot };
   showRouteMessage(ui.syncChecking);
   for (const delay of [0, 500, 1000, 2000, 3000, 3000]) {
     if (delay) await new Promise(resolve => setTimeout(resolve, delay));
@@ -274,6 +277,7 @@ async function recoverOperation(id, complete, snapshot) {
     }
     if (operation.status === 'unknown') unconfirmedOperation = { id, complete, snapshot };
     checkOperation(operation);
+    unconfirmedOperation = null;
     return;
   }
   unconfirmedOperation = { id, complete, snapshot };
@@ -284,6 +288,7 @@ async function refreshPublicationStatus() {
   const button = document.getElementById('tunnel-refresh-button');
   button.disabled = true;
   const pending = unconfirmedOperation;
+  operationContext = pending?.snapshot?.context || { kind: 'business' };
   try {
     await readPublication();
     if (pending) {
@@ -320,21 +325,23 @@ function formatPublicAddress(hostname, service, managed = false) {
 }
 
 function showRouteMessage(message, error = false, action) {
+  const row = operationContext?.subdomain ? [...document.querySelectorAll('[data-route-subdomain]')].find(row => row.dataset.routeSubdomain === operationContext.subdomain) : null;
+  const target = row?.querySelector('[data-route-feedback]') || (operationContext?.kind === 'form' && document.getElementById('route-modal').open ? document.getElementById('form-msg') : document.getElementById('route-feedback'));
   const box = document.createElement('div');
   box.className = error
-    ? 'rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
-    : 'rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100';
+    ? 'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'
+    : 'rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700';
   box.textContent = message;
   if (action) {
     const button = document.createElement('button');
     button.id = 'mutation-recovery-button';
     button.type = 'button';
-    button.className = 'mt-3 block rounded-xl border border-current px-3 py-2 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400';
+    button.className = 'mt-3 block rounded-lg border border-current px-3 py-2 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400';
     button.textContent = action.label;
     button.addEventListener('click', action.run);
     box.appendChild(button);
   }
-  document.getElementById('form-msg').replaceChildren(box);
+  target.replaceChildren(box);
   if (error) box.scrollIntoView({ block: 'nearest' });
 }
 
@@ -351,16 +358,17 @@ function showMutationFailure(error, snapshot) {
     showRouteMessage(ui.syncRolledBack, true, { label: ui.retryOperation, run: () => {
       if (!failedMutation || mutationPending) return;
       const retry = failedMutation;
-      mutateRoute(retry.url, retry.options, retry.successMessage, retry.onSuccess);
+      mutateRoute(retry.url, retry.options, retry.successMessage, retry.onSuccess, retry.context);
     } });
   } else if (unconfirmedOperation) {
     showRouteMessage(ui.syncUnconfirmed, true, { label: ui.verifyOperation, run: refreshPublicationStatus });
   } else { showRouteMessage(error.message || ui.routeRequestFailed, true); }
 }
 
-async function mutateRoute(url, options, successMessage, onSuccess = () => {}) {
+async function mutateRoute(url, options, successMessage, onSuccess = () => {}, context = { kind: 'business' }) {
+  operationContext = context;
   const id = crypto.randomUUID();
-  const snapshot = { url, options, successMessage, onSuccess };
+  const snapshot = { url, options, successMessage, onSuccess, context };
   clearFailedMutation();
   const complete = () => { clearFailedMutation(); onSuccess(); showRouteMessage(successMessage); };
   setMutationPending(true);
@@ -370,7 +378,7 @@ async function mutateRoute(url, options, successMessage, onSuccess = () => {}) {
   try {
     let response, data;
     try {
-      response = await fetch(url, { ...options, headers: { ...options.headers, 'X-Flux-Gate-Operation': id } });
+      response = await managementFetch(url, { ...options, headers: { ...options.headers, 'X-Flux-Gate-Operation': id } });
       data = await response.json();
     } catch {
       await recoverOperation(id, complete, snapshot);
@@ -388,7 +396,11 @@ async function mutateRoute(url, options, successMessage, onSuccess = () => {}) {
       if (data.operation?.status === 'unknown') unconfirmedOperation = { id, complete, snapshot };
       throw Object.assign(new Error(data.error || ui.routeRequestFailed), { operation: data.operation });
     }
-    if (data.operation?.id !== id) throw new Error(ui.syncUnconfirmed);
+    if (data.operation?.id !== id) {
+      await recoverOperation(id, complete, snapshot);
+      complete();
+      return;
+    }
     checkOperation(data.operation);
     complete();
   } catch (error) { showMutationFailure(error, snapshot); }
@@ -400,11 +412,11 @@ async function mutateRoute(url, options, successMessage, onSuccess = () => {}) {
 
 function setMutationPending(pending) {
   mutationPending = pending;
-  document.querySelectorAll('#route-list button, #route-submit-button, #route-cancel-button').forEach(button => { button.disabled = pending; });
+  document.querySelectorAll('#route-list button, #route-add, #route-submit-button, #route-cancel-button').forEach(button => { button.disabled = pending; });
   const submit = document.getElementById('route-submit-button');
-  document.querySelector('form').inert = pending;
-  submit.setAttribute('aria-busy', String(pending));
-  submit.textContent = pending ? ui.routeSaving : document.getElementById('f-original-subdomain').value ? ui.update : ui.add;
+  document.getElementById('route-form').inert = pending && operationContext?.kind === 'form';
+  submit.setAttribute('aria-busy', String(pending && operationContext?.kind === 'form'));
+  submit.textContent = pending && operationContext?.kind === 'form' ? ui.routeSaving : document.getElementById('f-original-subdomain').value ? ui.update : ui.add;
   const refresh = document.getElementById('tunnel-refresh-button');
   if (refresh) refresh.disabled = pending && !unconfirmedOperation;
 }
@@ -419,15 +431,6 @@ function toggleRouteTypeFields() {
   document.getElementById('http-auth-fields').disabled = !protectedMode;
   document.getElementById('cloudflare-access-note').textContent = tcp ? ui.cloudflareTcp : ui.cloudflareHttp;
   toggleAuthModeFields();
-}
-
-function updateRouteCount() {
-  const routeCountBadge = document.getElementById('route-count-badge');
-  const enabledCountBadge = document.getElementById('enabled-count-badge');
-  const enabledCount = routes.filter((route) => !route.disabled).length;
-
-  if (routeCountBadge) routeCountBadge.textContent = ui.allRoutesCount.replace('{count}', String(routes.length));
-  if (enabledCountBadge) enabledCountBadge.textContent = ui.enabledRoutesCount.replace('{count}', String(enabledCount));
 }
 
 function getRouteStatusLabel(route) {
@@ -452,7 +455,7 @@ function renderRoutePath(route) {
   if (current === 'gateway' || current === 'direct') {
     const gatewayActive = current === 'gateway' && route.desired_path === 'gateway';
     const service = current === 'direct' ? route.current_service : gatewayActive ? route.target_service : ui.pathBlocked;
-    chain = `<span class="block text-xs text-slate-500">Cloudflare → Cloudflare Tunnel</span>${current === 'gateway' ? `<span class="block">↓ Gate${gatewayActive ? ` · ${escapeHtml(ui.passwordProtection)}` : ''}</span>` : ''}<span class="block break-all">↓ ${escapeHtml(service)}</span>`;
+    chain = `<span class="block text-xs text-slate-500">Cloudflare → Cloudflare Tunnel</span>${current === 'gateway' ? `<span class="block">↓ FluxGate${gatewayActive ? ` · ${escapeHtml(ui.basicAuthProtection)}` : ''}</span>` : ''}<span class="block break-all">↓ ${escapeHtml(service)}</span>`;
   }
   const pending = route.publication_status === 'pending' || route.publication_status === 'error';
   if (current === 'unmanaged' && route.current_service) chain += `<span class="block break-all">${escapeHtml(route.current_service)}</span>`;
@@ -484,49 +487,61 @@ function icon(name) {
   return icons[name] || '';
 }
 
+function renderReadOnlyRule(rule, management = false) {
+  return `<article class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4"><div class="flex flex-wrap items-start justify-between gap-2"><h3 class="min-w-0 break-all text-sm font-semibold text-slate-800">${escapeHtml(formatPublicAddress(rule.hostname, rule.service, rule.managed && !management))}</h3><span class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-500">${rule.managed && !management ? ui.gateManaged : ui.externallyMaintained}</span></div>${rule.path ? `<p class="mt-2 break-all font-mono text-xs text-slate-500">${ui.rulePath}: ${escapeHtml(rule.path)}</p>` : ''}<p class="mt-2 break-all font-mono text-sm text-slate-600">→ ${escapeHtml(rule.service)}</p></article>`;
+}
+
+function renderManagedRoute(route) {
+  const name = routeName(route);
+  const source = escapeHtml(formatPublicAddress(name, route.target_service, true));
+  const title = routeType(route) === 'http' && !route.disabled
+    ? `<a href="https://${escapeHtml(name)}" target="_blank" rel="noreferrer" class="break-all font-semibold text-slate-900 hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${source}</a>`
+    : `<span class="break-all font-semibold text-slate-900">${source}</span>`;
+  const buttons = [{ action: 'edit', label: ui.editLabel, glyph: 'edit' }, { action: 'toggle', label: route.disabled ? ui.enableLabel : ui.disableLabel, glyph: route.disabled ? 'play' : 'pause' }, { action: 'delete', label: ui.deleteLabel, glyph: 'trash' }];
+  return `<article data-route-subdomain="${escapeHtml(route.subdomain)}" class="min-w-0 rounded-lg border border-slate-200 p-4 ${route.disabled ? 'bg-slate-100 opacity-70 grayscale' : 'bg-white'}"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0 flex-1"><h3 class="break-all text-base">${title}</h3><div class="mt-2 flex flex-wrap gap-2 text-xs"><span class="rounded bg-slate-100 px-2 py-1 text-slate-600">${routeType(route) === 'tcp' ? 'TCP' : 'HTTP'} · ${routeType(route) === 'http' && !route.no_password ? ui.passwordProtection : ui.directConnection}</span><span class="rounded border px-2 py-1 ${getRouteStatusClass(route)}">${escapeHtml(getRouteStatusLabel(route))}</span></div></div><div class="flex shrink-0 gap-1">${buttons.map(button => `<button type="button" data-action="${button.action}" data-subdomain="${escapeHtml(route.subdomain)}" title="${escapeHtml(button.label)}" aria-label="${escapeHtml(button.label)} ${escapeHtml(name)}" class="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:opacity-40">${icon(button.glyph)}</button>`).join('')}</div></div><div class="mt-3">${renderRoutePath(route)}</div>${route.description ? `<p class="mt-3 break-words text-sm text-slate-500">${escapeHtml(route.description)}</p>` : ''}<div data-route-feedback role="status" aria-live="polite" class="mt-3"></div></article>`;
+}
+
 function renderRoutes() {
-  const el = document.getElementById('route-list');
-  updateRouteCount();
+  const primary = tunnelState?.inventories?.find(inventory => inventory.kind === 'forwarding');
+  const seen = new Set();
+  const entries = (primary?.existing_rules || []).map(rule => {
+    const route = rule.managed && !primary.read_only && !rule.path ? routes.find(route => routeName(route) === rule.hostname) : null;
+    if (route) { seen.add(route.subdomain); return renderManagedRoute(route); }
+    return renderReadOnlyRule(rule);
+  });
+  for (const route of routes) if (!seen.has(route.subdomain)) entries.push(renderManagedRoute(route));
+  document.getElementById('route-list').innerHTML = entries.length ? `<div class="grid min-w-0 gap-3">${entries.join('')}</div>` : `<p class="py-5 text-sm text-slate-500">${ui.emptyRoutes}</p>`;
+  const management = tunnelState?.inventories?.filter(inventory => inventory.kind === 'management') || [];
+  document.getElementById('management-status').textContent = !tunnelState ? ui.tunnelLoading : management.some(inventory => inventory.existing_rules_error) ? management.map(inventory => inventory.existing_rules_error).filter(Boolean).join(' ') : management.every(inventory => inventory.current_verified) && management.length ? ui.configurationVerified : ui.configurationUnverified;
+  document.getElementById('management-rules').innerHTML = `<div class="grid min-w-0 gap-3">${management.flatMap(inventory => inventory.existing_rules || []).map(rule => renderReadOnlyRule(rule, true)).join('') || `<p class="py-3 text-sm text-slate-500">${ui.noExistingRules}</p>`}</div>`;
+  setMutationPending(mutationPending);
+}
 
-  if (routes.length === 0) {
-    el.innerHTML = `
-      <div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
-        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-2xl shadow-card">🚀</div>
-        <p class="mt-4 text-base font-medium text-slate-900">${ui.emptyRoutes}</p>
-        <p class="mt-2 text-sm text-slate-500">${ui.addPanelDescription}</p>
-      </div>`;
-    return;
-  }
+function openModal(id, trigger) {
+  const modal = document.getElementById(id);
+  modal.returnFocusTarget = trigger || document.activeElement;
+  modal.showModal();
+  modal.querySelector('[data-scroll-region]')?.scrollTo(0, 0);
+  document.documentElement.classList.add('modal-open');
+}
 
-  el.innerHTML = `<div class="grid min-w-0 gap-3 md:grid-cols-2">${routes.map((r) => {
-    const name = escapeHtml(routeName(r));
-    const tcp = routeType(r) === 'tcp';
-    const source = escapeHtml(formatPublicAddress(routeName(r), r.target_service, true));
-    const title = r.disabled || tcp
-      ? `<h3 class="break-all text-base font-semibold tracking-tight ${r.disabled ? 'text-slate-400' : 'text-slate-950'}">${source}</h3>`
-      : `<a href="https://${name}" target="_blank" rel="noreferrer" class="mt-1 block group rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-sky-400/40"><h3 class="break-all text-base font-semibold tracking-tight text-slate-950 transition group-hover:text-sky-600">${source}</h3></a>`;
+function openRouteModal(trigger) {
+  if (mutationPending) return;
+  resetRouteForm();
+  operationContext = { kind: 'form' };
+  document.getElementById('form-msg').replaceChildren();
+  openModal('route-modal', trigger);
+  document.getElementById('f-sub').focus();
+}
 
-    return `
-      <article class="w-full min-w-0 rounded-3xl border ${r.disabled ? 'border-slate-200 bg-slate-100/80' : 'border-slate-200 bg-slate-50'} p-4 shadow-card transition hover:-translate-y-0.5 hover:bg-white sm:p-5">
-        <div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">${ui.subdomain}</p>
-              <span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">${tcp ? 'TCP' : 'HTTP'}</span>
-              <span class="rounded-full border px-2.5 py-1 text-[11px] font-medium ${getRouteStatusClass(r)}">${getRouteStatusLabel(r)}</span>
-            </div>
-            <div class="mt-1">${title}</div>
-            <div class="mt-2 rounded-2xl bg-white px-3 py-3 shadow-sm">${renderRoutePath(r)}</div>
-            <p class="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">${escapeHtml(r.description || ui.noDescription)}</p>
-          </div>
-          <div class="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end sm:justify-start sm:self-start">
-            <button type="button" data-action="edit" data-subdomain="${escapeHtml(r.subdomain)}" title="${ui.editLabel}" aria-label="${ui.editLabel} ${name}" class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${icon('edit')}</button>
-            <button type="button" data-action="toggle" data-subdomain="${escapeHtml(r.subdomain)}" title="${r.disabled ? ui.enableLabel : ui.disableLabel}" aria-label="${r.disabled ? ui.enableLabel : ui.disableLabel} ${name}" class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${icon(r.disabled ? 'play' : 'pause')}</button>
-            <button type="button" data-action="delete" data-subdomain="${escapeHtml(r.subdomain)}" title="${ui.deleteLabel}" aria-label="${ui.deleteLabel} ${name}" class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:cursor-default disabled:opacity-50">${icon('trash')}</button>
-          </div>
-        </div>
-      </article>`;
-  }).join('')}</div>`;
+function closeRouteModal() {
+  if (mutationPending && operationContext?.kind === 'form') return;
+  document.getElementById('route-modal').close();
+}
+
+function openSettingsModal(trigger) {
+  openModal('settings-modal', trigger);
+  document.getElementById('settings-current').focus();
 }
 
 function resetRouteForm() {
@@ -551,6 +566,8 @@ function resetRouteForm() {
 
 function editRoute(subdomain) {
   if (mutationPending) return;
+  operationContext = { kind: 'form' };
+  openModal('route-modal', document.activeElement);
   clearFailedMutation();
   const route = routes.find((item) => item.subdomain === subdomain);
   if (!route) return;
@@ -577,6 +594,7 @@ function editRoute(subdomain) {
 
 async function saveRoute(e) {
   e.preventDefault();
+  operationContext = { kind: 'form' };
   if (mutationPending) return;
   const originalSubdomain = document.getElementById('f-original-subdomain').value.trim();
   const type = formRouteType();
@@ -604,14 +622,14 @@ async function saveRoute(e) {
     }
     input.no_password = authMode === 'none';
   }
-  await mutateRoute('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }, originalSubdomain ? ui.routeSavedUpdated : ui.routeSavedAdded, resetRouteForm);
+  await mutateRoute('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }, originalSubdomain ? ui.routeSavedUpdated : ui.routeSavedAdded, () => { document.getElementById('route-modal').close(); }, { kind: 'form' });
 }
 
 async function toggleRouteDisabled(subdomain) {
   if (mutationPending) return;
   const route = routes.find(item => item.subdomain === subdomain);
   if (!route || (!route.disabled && !confirm(ui.disableConfirm.replace('{route}', routeName(route))))) return;
-  await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disabled: !route.disabled }) }, ui.routeSavedUpdated);
+  await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disabled: !route.disabled }) }, ui.routeSavedUpdated, undefined, { kind: 'route', subdomain });
 }
 
 async function deleteRoute(subdomain) {
@@ -620,11 +638,42 @@ async function deleteRoute(subdomain) {
   if (!route || !confirm(ui.deleteConfirm.replace('{route}', routeName(route)))) return;
   await mutateRoute(`/api/routes/${encodeURIComponent(subdomain)}`, { method: 'DELETE' }, ui.routeDeleted, () => {
     if (document.getElementById('f-original-subdomain').value === subdomain) resetRouteForm();
+  }, { kind: 'route', subdomain });
+}
+
+
+for (const id of ['route-modal', 'settings-modal', 'logout-modal']) {
+  const modal = document.getElementById(id);
+  modal.addEventListener('cancel', event => { if (id === 'route-modal' && mutationPending && operationContext?.kind === 'form') event.preventDefault(); });
+  modal.addEventListener('close', () => {
+    if (!document.querySelector('dialog[open]')) document.documentElement.classList.remove('modal-open');
+    if (id === 'route-modal') resetRouteForm();
+    if (id === 'settings-modal') { document.getElementById('settings-form').reset(); document.getElementById('settings-msg').textContent = ''; }
+    const target = modal.returnFocusTarget;
+    if (target?.isConnected) target.focus(); else document.getElementById('route-add').focus();
   });
 }
 
-document.querySelector('form').addEventListener('input', clearFailedMutation);
-document.querySelector('form').addEventListener('change', clearFailedMutation);
+document.getElementById('settings-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = document.getElementById('settings-submit');
+  if (button.disabled) return;
+  button.disabled = true;
+  button.textContent = ui.settingsSaving;
+  document.getElementById('settings-msg').textContent = '';
+  try {
+    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const response = await managementFetch('/settings/password' + (ui.htmlLang === 'en' ? '?lang=en' : ''), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (response.status === 401 || response.redirected && new URL(response.url).pathname === '/login') throw new Error(ui.relogin);
+    const result = await response.json();
+    if (!response.ok || result.error) throw new Error(result.error || ui.settingsRequestFailed);
+    location.assign(result.redirect || '/login');
+  } catch (error) { document.getElementById('settings-msg').textContent = error.message || ui.settingsRequestFailed; }
+  finally { button.disabled = false; button.textContent = ui.settingsSave; }
+});
+if (new URL(location.href).searchParams.get('settings') === 'open') openSettingsModal(document.getElementById('settings-open'));
+document.getElementById('route-form').addEventListener('input', clearFailedMutation);
+document.getElementById('route-form').addEventListener('change', clearFailedMutation);
 document.getElementById('route-list').addEventListener('click', event => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;

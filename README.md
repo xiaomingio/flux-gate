@@ -31,7 +31,7 @@ Choose one of three route modes:
 | Direct HTTP | Cloudflare → cloudflared → target |
 | Direct TCP | Cloudflare client → Cloudflare → cloudflared → target |
 
-Save, pause, resume and delete operations automatically synchronize the business Tunnel. Success is reported only after synchronization. Direct services use their own authentication. See [routing and Tunnel publishing](docs/tcp-forwarding.md).
+Save, pause, resume and delete operations automatically synchronize the business Tunnel. Public synchronization is confirmed only after it completes. If the business Tunnel is not configured, changes remain local and the dashboard shows that state. Direct services use their own authentication. See [routing and Tunnel publishing](docs/tcp-forwarding.md).
 
 A public HTTPS URL such as `https://demo.example.com` can forward to an internal HTTP target such as `http://192.168.1.10:3000`. Cloudflare manages the public certificate and terminates browser TLS; its connection to cloudflared uses an encrypted Tunnel. Flux Gate currently uses `http://` for web targets; HTTPS origins are not supported. The internal HTTP segment does not become TLS automatically and does not require a local certificate.
 
@@ -77,7 +77,7 @@ cp config.sample.json config.json
 Field summary:
 - `port`: admin server port
 - `baseDomain`: your main domain managed by Cloudflare
-- `auth.username`: login username
+- `auth.username`: admin form-login username and default credentials for protected HTTP routes
 - `auth.password_hash`: SHA256 password hash; empty means first run uses `admin/admin`
 - `routes`: list of subdomain forwarding rules
 - `routes[].username` / `routes[].password_hash`: pair of custom HTTP credentials; omit both for default credentials. Custom saves in the UI/API require both a username and a freshly entered password, including edits.
@@ -105,6 +105,14 @@ pm2 save
 ```
 
 The routing guide covers the two independent cloudflared processes, credentials, DNS, automatic synchronization and recovery. Credentials remain private on the deployment host.
+
+## Using the dashboard
+
+The dashboard keeps the introduction above two rule cards: business forwarding managed by Gate, and read-only management access. Each business route appears once alongside its actual Tunnel state; rules outside Gate ownership remain read-only.
+
+Add and edit routes in a dialog. The settings icon opens the password dialog; a successful change signs you out and returns you to login. Logout asks for confirmation. The globe icon opens the Chinese/English language menu. The old `/settings` URL redirects to `/?settings=open`, which opens the same dialog.
+
+Management uses a persistent 30-day server session, separate from forwarded HTTP Basic Auth. Logout and credential changes revoke access. API writes require the session Cookie and CSRF token. See [admin authentication](docs/admin-auth.md) for storage, trusted proxy and API details.
 
 ## Default login
 
@@ -135,7 +143,7 @@ Check these first:
 4. the target service is actually running
 
 ### How do I add a new route?
-Open the admin panel, fill in subdomain / IP / port, and save it. You can also edit route-specific username/password, allow no password, or disable the route. Changes are saved and synchronized automatically. If the request disconnects during Tunnel reload, the UI reads its operation receipt instead of repeating the write. Confirmed rollback failures can be retried explicitly.
+Open the admin panel and sign in through `/login`, then open the add-route dialog, fill in subdomain / IP / port, and save it. You can also edit route-specific username/password, allow no password, or disable the route. Changes are saved and synchronized automatically. If the request disconnects during Tunnel reload, the UI reads its operation receipt instead of repeating the write. Confirmed rollback failures can be retried explicitly.
 
 ## License
 
