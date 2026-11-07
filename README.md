@@ -29,7 +29,9 @@ Choose one of three route modes:
 | --- | --- |
 | HTTP with password protection | Cloudflare → cloudflared → Flux Gate Basic Auth → target |
 | Direct HTTP | Cloudflare → cloudflared → target |
-| Direct TCP | Cloudflare client → Cloudflare → cloudflared → target |
+| Direct TCP | Client-side cloudflared → Cloudflare → server-side cloudflared → target |
+
+Direct TCP means server-side cloudflared connects to the target without Gate. The connecting client still needs cloudflared, which SSH can invoke through ProxyCommand; it does not expose arbitrary public TCP ports. Client setup is covered in the [routing guide](docs/tcp-forwarding.md#tcp-客户端).
 
 Save, pause, resume and delete operations automatically synchronize the business Tunnel. Public synchronization is confirmed only after it completes. If the business Tunnel is not configured, changes remain local and the dashboard shows that state. Direct services use their own authentication. See [routing and Tunnel publishing](docs/tcp-forwarding.md).
 

@@ -29,7 +29,9 @@ Flux Gate 可以帮你：
 | --- | --- |
 | HTTP 密码保护 | Cloudflare → cloudflared → Flux Gate Basic Auth → 目标 |
 | HTTP 直连 | Cloudflare → cloudflared → 目标 |
-| TCP 直连 | Cloudflare 客户端 → Cloudflare → cloudflared → 目标 |
+| TCP 直连 | 访问端 cloudflared → Cloudflare → 服务端 cloudflared → 目标 |
+
+TCP 直连仅指服务端 cloudflared 跳过 Gate 连接目标；访问端仍需 cloudflared，SSH 可通过 ProxyCommand 自动调用它，并非开放任意公网 TCP 端口。配置方法见 [TCP 客户端](docs/tcp-forwarding.md#tcp-客户端)。
 
 保存、启用、暂停和删除会自动同步业务 Tunnel，同步完成后才确认公网生效；未配置业务 Tunnel 时只保存本地配置，界面显示“未配置业务 Tunnel”。直连服务使用自身的认证。配置与发布流程见 [路由与 Tunnel 发布](docs/tcp-forwarding.md)。
 

@@ -6,7 +6,7 @@ Flux Gate 管理 Cloudflare Tunnel 的原生 ingress。三种模式使用同一�
 | --- | --- | --- |
 | HTTP 密码保护 | `type: "http"`, `no_password: false` | Cloudflare → cloudflared → Flux Gate Basic Auth → HTTP 目标 |
 | HTTP 直连 | `type: "http"`, `no_password: true` | Cloudflare → cloudflared → HTTP 目标 |
-| TCP 直连 | `type: "tcp"` | Cloudflare 客户端 → Cloudflare → cloudflared → TCP 目标 |
+| TCP 直连 | `type: "tcp"` | 访问端 cloudflared → Cloudflare → 服务端 cloudflared → TCP 目标 |
 
 HTTP 密码保护可使用默认账号密码，也可为路由单独设置账号密码。直连 HTTP 由目标服务自身认证；TCP 使用 SSH key、数据库账号等目标协议认证。TCP 不接受 HTTP 账号密码字段。
 
@@ -155,13 +155,13 @@ API `inventories` 按业务 `forwarding` 与只读管理 `management` 分组；�
 
 ## TCP 客户端
 
-TCP 子域名用于选择 Cloudflare Tunnel 入口，不能用普通客户端直接连接该域名的任意公网 TCP 端口。使用官方 `cloudflared`：
+“TCP 直连”指服务端 cloudflared 跳过 Flux Gate 连接目标。访问端仍需运行 cloudflared；TCP 子域名用于选择 Tunnel 入口，不会开放可供普通 TCP 客户端直接连接的任意公网端口。其他 TCP 客户端可先用官方 `cloudflared` 启动本地转接：
 
 ```sh
 cloudflared access tcp --hostname database.example.com --url 127.0.0.1:15433
 ```
 
-然后让数据库客户端连接 `127.0.0.1:15433`。这个端口是客户端转接端口。SSH 可以使用 `cloudflared access ssh` 作为 SSH 的 ProxyCommand，服务器仍按 SSH key 鉴权。Cloudflare 承担客户端隧道传输，Flux Gate 不自建隧道协议。
+然后让数据库客户端连接 `127.0.0.1:15433`。这个端口是客户端转接端口。SSH 可通过 ProxyCommand 自动调用访问端的 `cloudflared access ssh`，服务器仍按 SSH key 鉴权。Cloudflare 承担客户端隧道传输，Flux Gate 不自建隧道协议。
 
 建议在受管区块外维护独立的主机恢复入口，直连 SSH 等服务，预先验证其密钥登录。恢复入口不依赖 Flux Gate 应用运行。
 
