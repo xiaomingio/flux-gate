@@ -10,8 +10,8 @@
   "subdomain": "Public subdomain",
   "targetIp": "Internal target IP",
   "port": "Target port",
-  "descriptionOptional": "Description (optional)",
-  "descriptionPlaceholder": "Description",
+  "descriptionOptional": "Name (optional)",
+  "descriptionPlaceholder": "For example, Agent Beat",
   "add": "Add",
   "update": "Update",
   "emptyRoutes": "No routes yet. Add one to get started.",
@@ -146,5 +146,6 @@
   "settingsRequestFailed": "Could not update the password. Check the connection and try again.",
   "basicAuthProtection": "Basic Auth protection",
   "showPassword": "Show password",
-  "hidePassword": "Hide password"
+  "hidePassword": "Hide password",
+  "untitledRoute": "Untitled"
 }

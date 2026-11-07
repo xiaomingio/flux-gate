@@ -10,8 +10,8 @@
   "subdomain": "公网子域名",
   "targetIp": "内网目标 IP",
   "port": "目标端口",
-  "descriptionOptional": "说明（可选）",
-  "descriptionPlaceholder": "描述",
+  "descriptionOptional": "名称（可选）",
+  "descriptionPlaceholder": "例如 Agent Beat",
   "add": "添加",
   "update": "更新",
   "emptyRoutes": "暂无路由，添加一个开始使用",
@@ -146,5 +146,6 @@
   "settingsRequestFailed": "无法更新密码，请检查连接后重试。",
   "basicAuthProtection": "Basic Auth 密码保护",
   "showPassword": "显示密码",
-  "hidePassword": "隐藏密码"
+  "hidePassword": "隐藏密码",
+  "untitledRoute": "未命名"
 }
