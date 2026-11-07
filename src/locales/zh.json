@@ -75,7 +75,7 @@
   "passwordCardDescription": "建议定期更新访问密码，避免默认账号长期暴露。",
   "routeType": "路由类型",
   "tcpListenPort": "Gate 监听地址",
-  "tcpAccessNote": "Cloudflare Tunnel 连接此端口，再转发到内网目标。",
+  "tcpAccessNote": "Cloudflare Tunnel 连接此端口，再转发到内网目标。支持各类 TCP 协议，如 SSH、MySQL…。",
   "tcpTargetAuth": "目标服务认证",
   "tcpListening": "本机监听中",
   "tcpPending": "等待监听",

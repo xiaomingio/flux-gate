@@ -75,7 +75,7 @@
   "passwordCardDescription": "Rotate the password regularly so the default credentials never stay exposed for long.",
   "routeType": "Route type",
   "tcpListenPort": "Gate listening address",
-  "tcpAccessNote": "Cloudflare Tunnel connects here, then forwards to the internal target.",
+  "tcpAccessNote": "Cloudflare Tunnel connects here, then forwards to the internal target. Supports TCP protocols such as SSH, MySQL…",
   "tcpTargetAuth": "Target service authentication",
   "tcpListening": "Listening locally",
   "tcpPending": "Listener pending",

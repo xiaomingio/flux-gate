@@ -97,12 +97,11 @@
             </div>
           </div>
           <div id="tcp-fields" class="hidden min-w-0">
-            <label for="f-listen-port" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.tcpListenPort %></label>
+            <label for="f-listen-port" class="mb-2 block text-sm font-medium leading-6 text-slate-200"><%= ui.tcpListenPort %> <span id="tcp-access-note" class="font-normal text-slate-400">（<%= ui.tcpAccessNote %>）</span></label>
             <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
               <span class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">tcp://127.0.0.1:</span>
               <input name="listen_port" id="f-listen-port" type="number" min="1024" max="65535" step="1" placeholder="10022" disabled aria-describedby="tcp-access-note" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-0">
             </div>
-            <p id="tcp-access-note" class="mt-2 text-sm leading-6 text-slate-300"><%= ui.tcpAccessNote %></p>
           </div>
           <div class="min-w-0">
             <div class="mb-2 grid grid-cols-[minmax(0,1fr)_5rem] gap-2 text-sm font-medium text-slate-200">

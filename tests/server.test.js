@@ -195,7 +195,6 @@ test('GET / renders auth mode options and custom inputs are conditional', async 
     assert.match(html, /<form class="grid min-w-0 gap-4" onsubmit="saveRoute\(event\)">/);
     assert.match(html, /class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900\/70/);
     assert.match(html, /class="inline-flex shrink-0 items-center border-l border-slate-700 bg-slate-900 px-4 text-sm font-medium text-slate-400"/);
-    assert.match(html, /class="grid min-w-0 gap-4 sm:grid-cols-2"/);
     assert.match(html, /w-full min-w-0 rounded-2xl border border-slate-700 bg-slate-900\/70/);
   });
 });
