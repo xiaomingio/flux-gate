@@ -34,8 +34,8 @@
   <%- include('password-visibility.ejs') %>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
-  <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-    <header class="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+  <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 lg:px-6">
+    <header class="mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-soft sm:p-4">
       <div class="flex items-start justify-between gap-3">
         <div class="flex min-w-0 items-center gap-3">
           <img src="/favicon.svg" width="44" height="44" alt="" class="h-11 w-11 shrink-0 rounded-lg">
@@ -43,22 +43,22 @@
         </div>
         <nav aria-label="<%= ui.pageActions %>" class="flex shrink-0 items-center gap-1">
           <%- include('language-menu.ejs') %>
-          <button id="settings-open" type="button" title="<%= ui.settings %>" aria-label="<%= ui.settings %>" onclick="openSettingsModal(this)" class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%- include('icons.ejs', { name: 'settings' }) %></button>
-          <button id="logout-open" type="button" title="<%= ui.logout %>" aria-label="<%= ui.logout %>" onclick="openModal('logout-modal', this)" class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%- include('icons.ejs', { name: 'logout' }) %></button>
+          <button id="settings-open" type="button" title="<%= ui.settings %>" aria-label="<%= ui.settings %>" onclick="openSettingsModal(this)" class="inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%- include('icons.ejs', { name: 'settings' }) %></button>
+          <button id="logout-open" type="button" title="<%= ui.logout %>" aria-label="<%= ui.logout %>" onclick="openModal('logout-modal', this)" class="inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%- include('icons.ejs', { name: 'logout' }) %></button>
         </nav>
       </div>
-      <p class="mt-5 text-xl font-semibold tracking-tight sm:text-2xl"><%= ui.heroSubtitle %></p>
+      <p class="mt-3 text-xl font-semibold tracking-tight sm:text-2xl"><%= ui.heroSubtitle %></p>
       <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600"><%= ui.heroDescription %></p>
     </header>
-    <main class="grid min-w-0 gap-6">
-      <section id="business-card" class="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+    <main class="grid min-w-0 gap-4">
+      <section id="business-card" class="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-soft sm:p-4">
         <h2 class="text-xl font-semibold tracking-tight"><%= ui.forwardingTunnel %></h2>
         <div id="tunnel-panel" class="mt-3" aria-live="polite"></div>
         <div id="route-feedback" role="status" aria-live="polite" class="mt-3"></div>
         <div id="route-list" class="mt-4"></div>
-        <button id="route-add" type="button" onclick="openRouteModal(this)" class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><span aria-hidden="true">+</span><%= ui.addRouteAction %></button>
+        <button id="route-add" type="button" onclick="openRouteModal(this)" class="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><span aria-hidden="true">+</span><%= ui.addRouteAction %></button>
       </section>
-      <section id="management-card" class="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+      <section id="management-card" class="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-soft sm:p-4">
         <h2 class="text-xl font-semibold tracking-tight"><%= ui.managementTunnel %></h2>
         <div id="management-status" class="mt-3 text-sm leading-6 text-slate-500"></div>
         <div id="management-rules" class="mt-4"></div>
@@ -66,12 +66,12 @@
     </main>
   </div>
   <dialog id="route-modal" aria-labelledby="route-form-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl backdrop:bg-slate-950/40 overflow-hidden p-0">
-    <div class="modal-scroll p-5 sm:p-6" data-scroll-region>
-    <div class="mb-5 flex items-start justify-between gap-3">
+    <div class="modal-scroll p-4" data-scroll-region>
+    <div class="mb-3 flex items-start justify-between gap-3">
       <div><h2 id="route-form-title" class="text-2xl font-semibold tracking-tight"><%= ui.addRoute %></h2><p id="route-form-subtitle" class="mt-2 text-sm leading-6 text-slate-500"><%= ui.addPanelDescription %></p></div>
-      <button type="button" aria-label="<%= ui.close %>" title="<%= ui.close %>" onclick="closeRouteModal()" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-2xl text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">×</button>
+      <button type="button" aria-label="<%= ui.close %>" title="<%= ui.close %>" onclick="closeRouteModal()" class="inline-flex h-10 w-10 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-2xl text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">×</button>
     </div>
-<form id="route-form" class="grid min-w-0 gap-4" onsubmit="saveRoute(event)">
+<form id="route-form" class="grid min-w-0 gap-3" onsubmit="saveRoute(event)">
           <input type="hidden" id="f-original-subdomain">
 
           <fieldset class="min-w-0">
@@ -123,14 +123,14 @@
                     <span><%= ui.authCustomLabel %></span>
                   </label>
                 </div>
-            <div id="custom-auth-fields" class="hidden grid gap-4 sm:grid-cols-2">
+            <div id="custom-auth-fields" class="hidden grid gap-3 sm:grid-cols-2">
               <div>
                 <label for="f-username" class="mb-2 block text-sm font-medium text-slate-700"><%= ui.customUsername %></label>
-                <input name="username" id="f-username" autocomplete="off" disabled placeholder="alice" class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+                <input name="username" id="f-username" autocomplete="off" disabled placeholder="alice" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
               </div>
               <div>
                 <label for="f-password" class="mb-2 block text-sm font-medium text-slate-700"><%= ui.customPassword %></label>
-                <input name="password" id="f-password" type="password" autocomplete="new-password" disabled placeholder="••••••••" class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+                <input name="password" id="f-password" type="password" autocomplete="new-password" disabled placeholder="••••••••" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
               </div>
             </div>
               </div>
@@ -152,42 +152,42 @@
           </div>
           <div class="min-w-0">
             <label for="f-desc" class="mb-2 block text-sm font-medium text-slate-700"><%= ui.descriptionOptional %></label>
-            <input name="description" id="f-desc" placeholder="<%= ui.descriptionPlaceholder %>" class="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-3 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
+            <input name="description" id="f-desc" placeholder="<%= ui.descriptionPlaceholder %>" class="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15">
           </div>
-          <p id="no-password-warning" role="note" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-700"><%= ui.noPasswordWarning %></p>
-          <p id="tcp-security-warning" role="note" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-700"><%= ui.tcpSecurityWarning %></p>
-          <label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <p id="no-password-warning" role="note" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm leading-6 text-red-700"><%= ui.noPasswordWarning %></p>
+          <p id="tcp-security-warning" role="note" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm leading-6 text-red-700"><%= ui.tcpSecurityWarning %></p>
+          <label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
             <input type="checkbox" id="f-enabled" name="enabled" checked class="h-4 w-4 rounded border-slate-300 bg-white text-sky-500 focus:ring-sky-400/20">
             <span><%= ui.startRouteLabel %></span>
           </label>
           <div class="flex flex-col gap-3 sm:flex-row">
-            <button id="route-submit-button" type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"><%= ui.add %></button>
-            <button id="route-cancel-button" type="button" onclick="closeRouteModal()" class="hidden inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><%= ui.cancelEdit %></button>
+            <button id="route-submit-button" type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"><%= ui.add %></button>
+            <button id="route-cancel-button" type="button" onclick="closeRouteModal()" class="hidden inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><%= ui.cancelEdit %></button>
           </div>
         </form>
     <div id="form-msg" role="status" aria-live="polite" class="mt-4"></div>
     </div>
   </dialog>
   <dialog id="settings-modal" aria-labelledby="settings-modal-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl backdrop:bg-slate-950/40 overflow-hidden p-0">
-    <div class="modal-scroll p-5 sm:p-6" data-scroll-region>
-    <div class="mb-5 flex items-start justify-between gap-3"><h2 id="settings-modal-title" class="text-2xl font-semibold tracking-tight"><%= ui.changePassword %></h2><button type="button" aria-label="<%= ui.close %>" title="<%= ui.close %>" onclick="document.getElementById('settings-modal').close()" class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-2xl text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">×</button></div>
-    <form id="settings-form" method="POST" action="/settings/password" class="grid gap-4">
+    <div class="modal-scroll p-4" data-scroll-region>
+    <div class="mb-3 flex items-start justify-between gap-3"><h2 id="settings-modal-title" class="text-2xl font-semibold tracking-tight"><%= ui.changePassword %></h2><button type="button" aria-label="<%= ui.close %>" title="<%= ui.close %>" onclick="document.getElementById('settings-modal').close()" class="inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-2xl text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">×</button></div>
+    <form id="settings-form" method="POST" action="/settings/password" class="grid gap-3">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <% for (const field of [{name:'current',label:ui.currentPassword,autocomplete:'current-password'}, {name:'new_pass',label:ui.newPassword,autocomplete:'new-password'}, {name:'confirm',label:ui.confirmPassword,autocomplete:'new-password'}]) { %>
-      <div><label for="settings-<%= field.name %>" class="mb-2 block text-sm font-medium text-slate-700"><%= field.label %></label><input id="settings-<%= field.name %>" name="<%= field.name %>" type="password" autocomplete="<%= field.autocomplete %>" required class="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"></div>
+      <div><label for="settings-<%= field.name %>" class="mb-2 block text-sm font-medium text-slate-700"><%= field.label %></label><input id="settings-<%= field.name %>" name="<%= field.name %>" type="password" autocomplete="<%= field.autocomplete %>" required class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"></div>
       <% } %>
       <div id="settings-msg" role="status" class="text-sm text-red-700"></div>
-      <button id="settings-submit" type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%= ui.settingsSave %></button>
+      <button id="settings-submit" type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"><%= ui.settingsSave %></button>
     </form>
     </div>
   </dialog>
   <dialog id="logout-modal" aria-labelledby="logout-title" class="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl backdrop:bg-slate-950/40 overflow-hidden p-0">
-    <div class="modal-scroll p-5 sm:p-6" data-scroll-region>
+    <div class="modal-scroll p-4" data-scroll-region>
     <h2 id="logout-title" class="text-xl font-semibold"><%= ui.logout %></h2><p class="mt-3 text-sm leading-6 text-slate-600"><%= ui.logoutConfirm %></p>
-    <form method="POST" action="/logout" class="mt-6 flex justify-end gap-3" onsubmit="this.querySelector('button[type=submit]').disabled=true">
+    <form method="POST" action="/logout" class="mt-4 flex justify-end gap-3" onsubmit="this.querySelector('button[type=submit]').disabled=true">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="button" onclick="document.getElementById('logout-modal').close()" autofocus class="min-h-11 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><%= ui.cancel %></button>
-      <button type="submit" class="min-h-11 rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><%= ui.logout %></button>
+      <button type="button" onclick="document.getElementById('logout-modal').close()" autofocus class="min-h-10 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><%= ui.cancel %></button>
+      <button type="submit" class="min-h-10 rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><%= ui.logout %></button>
     </form>
     </div>
   </dialog>
@@ -211,7 +211,7 @@ function renderTunnelStatus() {
   const state = tunnelState;
   const status = mutationPending ? ui.routeSaving : !state ? ui.tunnelLoading : ({ disabled: ui.tunnelManual, pending: ui.tunnelPending, applied: ui.tunnelApplied, error: ui.tunnelError })[state.status] || ui.tunnelError;
   const primary = state?.inventories?.find(inventory => inventory.kind === 'forwarding');
-  document.getElementById('tunnel-panel').innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : state?.status === 'applied' ? 'text-emerald-700' : 'text-slate-500'}">${escapeHtml(status)}</span><button type="button" id="tunnel-refresh-button" class="min-h-11 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500">${ui.refreshStatus}</button></div>${primary?.existing_rules_error || state?.error ? `<p class="mt-2 break-words text-sm text-red-700">${escapeHtml(primary?.existing_rules_error || state.error)}</p>` : ''}`;
+  document.getElementById('tunnel-panel').innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><span class="text-sm ${state?.status === 'error' ? 'text-red-700' : state?.status === 'applied' ? 'text-emerald-700' : 'text-slate-500'}">${escapeHtml(status)}</span><button type="button" id="tunnel-refresh-button" class="rounded text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">${ui.refreshStatus}</button></div>${primary?.existing_rules_error || state?.error ? `<p class="mt-2 break-words text-sm text-red-700">${escapeHtml(primary?.existing_rules_error || state.error)}</p>` : ''}`;
   document.getElementById('tunnel-refresh-button').addEventListener('click', refreshPublicationStatus);
 }
 
@@ -329,8 +329,8 @@ function showRouteMessage(message, error = false, action) {
   const target = row?.querySelector('[data-route-feedback]') || (operationContext?.kind === 'form' && document.getElementById('route-modal').open ? document.getElementById('form-msg') : document.getElementById('route-feedback'));
   const box = document.createElement('div');
   box.className = error
-    ? 'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'
-    : 'rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700';
+    ? 'rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'
+    : 'rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700';
   box.textContent = message;
   if (action) {
     const button = document.createElement('button');
@@ -515,7 +515,7 @@ function renderManagedRoute(route) {
   const name = routeName(route);
   const title = escapeHtml(route.description?.trim() || ui.untitledRoute);
   const buttons = [{ action: 'edit', label: ui.editLabel, glyph: 'edit' }, { action: 'toggle', label: route.disabled ? ui.enableLabel : ui.disableLabel, glyph: route.disabled ? 'play' : 'pause' }, { action: 'delete', label: ui.deleteLabel, glyph: 'trash' }];
-  return `<article data-route-subdomain="${escapeHtml(route.subdomain)}" class="relative min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 ${route.disabled ? 'bg-slate-100 opacity-70' : 'bg-white'}"><div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 lg:min-h-11 lg:pr-40"><h3 class="min-w-0 break-words text-sm font-semibold text-slate-900">${title}</h3><div class="flex flex-wrap gap-1.5 text-xs"><span class="rounded bg-slate-100 px-2 py-0.5 text-slate-600">${routeType(route) === 'tcp' ? 'TCP' : 'HTTP'} · ${routeType(route) === 'http' && !route.no_password ? ui.passwordProtection : ui.directConnection}</span><span class="rounded border px-2 py-0.5 ${getRouteStatusClass(route)}">${escapeHtml(getRouteStatusLabel(route))}</span></div></div><div class="mt-2 lg:mt-1.5">${renderRoutePath(route)}</div><div class="mt-3 flex shrink-0 gap-1 lg:absolute lg:right-3 lg:top-2.5 lg:mt-0">${buttons.map(button => `<button type="button" data-action="${button.action}" data-subdomain="${escapeHtml(route.subdomain)}" title="${escapeHtml(button.label)}" aria-label="${escapeHtml(button.label)} ${escapeHtml(name)}" class="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:opacity-40">${icon(button.glyph)}</button>`).join('')}</div><div data-route-feedback role="status" aria-live="polite" class="mt-2 empty:hidden"></div></article>`;
+  return `<article data-route-subdomain="${escapeHtml(route.subdomain)}" class="relative min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 ${route.disabled ? 'bg-slate-100 opacity-70' : 'bg-white'}"><div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 lg:min-h-9 lg:pr-32"><h3 class="min-w-0 break-words text-sm font-semibold text-slate-900">${title}</h3><div class="flex flex-wrap gap-1.5 text-xs"><span class="rounded bg-slate-100 px-2 py-0.5 text-slate-600">${routeType(route) === 'tcp' ? 'TCP' : 'HTTP'} · ${routeType(route) === 'http' && !route.no_password ? ui.passwordProtection : ui.directConnection}</span><span class="rounded border px-2 py-0.5 ${getRouteStatusClass(route)}">${escapeHtml(getRouteStatusLabel(route))}</span></div></div><div class="mt-2 lg:mt-1.5">${renderRoutePath(route)}</div><div class="mt-3 flex shrink-0 gap-1 lg:absolute lg:right-3 lg:top-2.5 lg:mt-0">${buttons.map(button => `<button type="button" data-action="${button.action}" data-subdomain="${escapeHtml(route.subdomain)}" title="${escapeHtml(button.label)}" aria-label="${escapeHtml(button.label)} ${escapeHtml(name)}" class="inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:opacity-40">${icon(button.glyph)}</button>`).join('')}</div><div data-route-feedback role="status" aria-live="polite" class="mt-2 empty:hidden"></div></article>`;
 }
 
 function renderRoutes() {
