@@ -94,10 +94,10 @@
           <div id="route-flow" class="grid min-w-0 gap-2">
             <div class="min-w-0 rounded-2xl border border-slate-700 bg-slate-900/60 p-3">
               <label for="f-sub" class="mb-2 block text-sm font-medium text-slate-200"><%= ui.publicAddress %></label>
-            <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
-              <span id="f-sub-scheme" class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">https://</span>
-              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-0">
-              <span class="inline-flex shrink-0 items-center border-l border-slate-700 bg-slate-900 px-4 text-sm font-medium text-slate-400">.<%= baseDomain %></span>
+            <div class="flex min-w-0 items-center">
+              <span id="f-sub-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-400" aria-hidden="true">https://</span>
+              <input name="subdomain" id="f-sub" placeholder="nas" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <span class="inline-flex shrink-0 items-center px-4 text-sm font-medium text-slate-400">.<%= baseDomain %></span>
             </div>
             </div>
             <div class="text-center text-slate-500" aria-hidden="true">↓</div>
@@ -142,11 +142,11 @@
               <label for="f-ip"><%= ui.targetIp %></label>
               <label for="f-port"><%= ui.port %></label>
             </div>
-            <div class="flex min-w-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/70 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/15">
-              <span id="f-target-scheme" class="inline-flex shrink-0 items-center border-r border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-400" aria-hidden="true">http://</span>
-              <input name="ip" id="f-ip" placeholder="<%= ui.targetHostPlaceholder %>" required class="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400">
-              <span class="inline-flex shrink-0 items-center border-x border-slate-700 px-2 text-slate-400" aria-hidden="true">:</span>
-              <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-0 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400">
+            <div class="flex min-w-0 items-center">
+              <span id="f-target-scheme" class="inline-flex shrink-0 items-center px-3 text-sm font-medium text-slate-400" aria-hidden="true">http://</span>
+              <input name="ip" id="f-ip" placeholder="<%= ui.targetHostPlaceholder %>" required class="min-w-0 flex-1 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
+              <span class="inline-flex shrink-0 items-center px-2 text-slate-400" aria-hidden="true">:</span>
+              <input name="port" id="f-port" type="number" min="1" max="65535" step="1" placeholder="8080" required class="w-20 min-w-0 shrink-0 border-x-0 border-t-0 border-b border-slate-600 bg-transparent px-3 py-3 text-base text-white placeholder:text-slate-500 outline-none focus:border-sky-400 focus:ring-0">
             </div>
             </div>
           </div>
